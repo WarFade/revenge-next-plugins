@@ -1,0 +1,51 @@
+import { setupChangelog } from '../../../shared/changelog'
+import { CHANGELOG } from './changelog'
+import { watchDiscord } from './lib/discord'
+import { stop as stopPronounDB } from './lib/pronounDB'
+import { watchChannelMessages } from './lib/redraw'
+import { DEFAULTS, setStorage, type PronounsStorage } from './lib/state'
+import patchChat from './patches/chat'
+import patchMessageSheet from './patches/messageSheet'
+import Settings from './ui/Settings'
+
+const TAG = '[Pronouns]'
+
+function attempt(cleanup: (fn: () => void) => void, what: string, install: () => () => void) {
+	try {
+		cleanup(install())
+	} catch (error) {
+		console.error(`${TAG} ${what} failed:`, error)
+	}
+}
+
+export default plugin<{ jsonStorage: PronounsStorage }>({
+	jsonStorage: {
+		load: true,
+		default: DEFAULTS,
+	},
+
+	start(api) {
+		// Enabling a plugin mid-session leaves its hooks half-applied (see ghost-log-native-beta).
+		if (api.plugin.startedLate) {
+			api.plugin.requireReload()
+			return
+		}
+
+		const { cleanup, jsonStorage } = api
+		setStorage(jsonStorage)
+		cleanup(() => setStorage(undefined))
+
+		attempt(cleanup, 'changelog', () => setupChangelog(api, CHANGELOG))
+		attempt(cleanup, 'profiles', watchDiscord)
+		attempt(cleanup, 'message cache', watchChannelMessages)
+		attempt(cleanup, 'chat tag', patchChat)
+		attempt(cleanup, 'message sheet', patchMessageSheet)
+	},
+
+	stop(api) {
+		stopPronounDB()
+		api.plugin.requireReload()
+	},
+
+	SettingsComponent: Settings,
+})
