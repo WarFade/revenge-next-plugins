@@ -3,7 +3,7 @@
 Plugins for [Revenge Next](https://github.com/revenge-mod/revenge-bundle-next). This repository
 contains original plugins and ports of Vendetta and classic Revenge plugins.
 
-Last checked against Discord **348.0** (Android).
+Last checked against Discord **349.2 Alpha** (Android).
 
 ## Install
 
@@ -29,6 +29,12 @@ https://bleelblep.github.io/revenge-next-plugins/
 | **Free Stickers** | Send any sticker without Nitro. Locked stickers go as an image link, and animated ones are converted to a GIF first. |
 | **ANSI Colours** | Shows colours in `ansi` code blocks the way desktop Discord does. |
 | **Live Markdown** | Shows bold, italics, code, spoilers and more styled as you type a message. |
+| **Character Counter** | Shows the message character count above the composer and turns red past the limit. |
+| **No Dividers** | Removes thin divider lines from settings and other lists. |
+| **Picture Links** | Opens profile pictures and banners full size, with save and share actions. |
+| **Pronouns** | Shows pronouns beside names in chat, using Discord profiles first and PronounDB as a fallback. |
+| **Dreamscape** | Opens shader worlds, interactive scenes and a small browser from inside Discord. |
+| **Scenes** | Adds animated shader scenes and atmospheric backgrounds. |
 
 ### AI plugins
 
@@ -70,6 +76,8 @@ working but will not receive updates.
   (`manti.vendicated.dev`). Writing, voting or reporting needs you to authorise ReviewDB's Discord
   app, the same sign-in the desktop plugin uses.
 - **Translate** sends the text of messages you translate to Google, Bing, Yandex or MyMemory.
+- **Pronouns** sends Discord user IDs to PronounDB only when Discord has no profile pronouns and the
+  fallback is needed. No message text or usernames are sent.
 - **Screenshot Redactor** only blanks the personal details it can recognise in message text. A
   name typed into a message is still visible.
 
