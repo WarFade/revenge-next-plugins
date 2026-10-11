@@ -42,14 +42,3 @@ export function token(name: string, fallback: string): string {
 	}
 	return fallback
 }
-
-export const groupHeaderText = () => token('TEXT_MUTED', '#B5BAC1')
-
-/** The log's Prev / Page n / Next strip: Discord's secondary button colours. */
-export const pagerBackground = (disabled: boolean) =>
-	disabled ? token('BACKGROUND_MOD_SUBTLE', '#23262b') : token('CONTROL_SECONDARY_BACKGROUND_DEFAULT', '#2b2f36')
-export const pagerText = (disabled: boolean) =>
-	disabled ? token('TEXT_MUTED', '#6b7280') : token('CONTROL_SECONDARY_TEXT_DEFAULT', '#d7dce2')
-export const pagerIndicatorBackground = () => token('BACKGROUND_MOD_SUBTLE', '#2b2f36')
-export const pagerIndicatorBorder = () => token('BORDER_SUBTLE', '#3a3f47')
-export const pagerIndicatorText = () => token('TEXT_DEFAULT', '#d7dce2')

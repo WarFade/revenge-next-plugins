@@ -3,6 +3,7 @@ import { fillWithFakeEntries } from '../../lib/debug'
 import { dumpMessageStore, dumpRoutingModules, inspectCurrentChannel, inspectMessageInstance, isProbeRunning, probeNavigationModules, setProbeRunning } from '../../lib/probe'
 import { getSettingsStorage } from '../state'
 import { rowIcon } from '../icon'
+import { showToast } from '../../../../../shared/toast'
 import { useBottomPadding } from '../safeArea'
 import type { GhostLogSettings } from '../../types'
 
@@ -20,8 +21,7 @@ export default function Debug() {
 	const [watching, setWatching] = React.useState(isProbeRunning('getMessages'))
 	const backupPath = s.backupFilePath?.trim() || DEFAULT_BACKUP_PATH
 
-	const toast = (content: string) =>
-		revenge.discord.actions.ToastActionCreators.open({ key: 'ghost-log-native-beta-debug', content })
+	const toast = (content: string) => showToast(content, 'ghost-log-native-beta-debug')
 
 	const seedFake = () => {
 		Alert.alert(

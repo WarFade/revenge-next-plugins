@@ -2,6 +2,8 @@
 
 package com.bleelblep.ghostlogbeta
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.util.Base64
 import android.util.Log
 import io.github.revenge.plugins.plugin
@@ -118,6 +120,11 @@ val ghostLogNativeBeta = plugin {
 
 		var dirty = false
 		var editsDirty = false
+		// Rich-content records waiting for the next flush, oldest first. Writing the shard on every
+		// capture meant decrypting, re-encrypting and rewriting up to 100 embeds per deletion; the log
+		// itself was already coalesced and this was the half that wasn't.
+		val pendingRich = mutableListOf<JSONObject>()
+		var richPerFile = 100
 		var persistJob: Job? = null
 
 		fun hideFromMediaScanner(dir: File) {
@@ -268,6 +275,10 @@ val ghostLogNativeBeta = plugin {
 		// true only when the directory actually changed, so the caller knows to re-load the log.
 		fun setBaseDirFromBackup(backupPath: String?): Boolean {
 			val requested = resolveBaseDir(backupPath) ?: return false
+			// Every capture carries the backup path, and this used to probe it each time: a test file
+			// written and deleted per deletion, under the lock, all through a purge. The same path that
+			// already works needs no new probe. A failing one is still retried, in case it recovers.
+			if (requested.absolutePath == requestedDir && storageError == null) return false
 			requestedDir = requested.absolutePath
 
 			// Probe before committing. A shared-storage path that Android refuses is the difference
@@ -378,6 +389,122 @@ val ghostLogNativeBeta = plugin {
 			"file://" + out.absolutePath
 		}.getOrNull()
 
+		fun queueRichLocked(rich: JSONObject, messageId: String, channelId: String, deletedAt: Long, perFile: Int) {
+			richPerFile = perFile.coerceIn(50, 100)
+			pendingRich.removeAll { it.optString("messageId") == messageId }
+			pendingRich.add(JSONObject().apply {
+				put("messageId", messageId)
+				put("channelId", channelId)
+				put("deletedAt", deletedAt)
+				if (rich.has("attachments")) put("attachments", rich.optJSONArray("attachments"))
+				if (rich.has("embeds")) put("embeds", rich.optJSONArray("embeds"))
+			})
+		}
+
+		/**
+		 * Writes every queued rich-content record into the rolling shards in one pass. Caller holds the
+		 * mutex. Never throws: a failure is recorded and the queue kept, so the next flush retries it.
+		 *
+		 * Shards are read through readJsonFile: they are written encrypted, and the envelope is itself
+		 * valid JSON with no `entries`, so a plain parse once made every capture wipe the shard.
+		 */
+		fun flushRichLocked(): Boolean {
+			if (pendingRich.isEmpty()) return true
+			return runCatching {
+				val index = readJsonFile(richIndexFile) ?: JSONObject()
+				val startFile = index.optInt("file", 1).coerceAtLeast(1)
+				var file = startFile
+				val incoming = pendingRich.map { it.optString("messageId") }.toHashSet()
+				var current = JSONArray()
+				readJsonFile(richShard(file))?.optJSONArray("entries")?.let { old ->
+					for (i in 0 until old.length()) {
+						val entry = old.optJSONObject(i) ?: continue
+						if (entry.optString("messageId") !in incoming) current.put(entry)
+					}
+				}
+				baseDir.mkdirs()
+				fun write(n: Int, shardEntries: JSONArray) =
+					richShard(n).writeText(encrypt(JSONObject().put("version", 1).put("entries", shardEntries).toString()))
+				for (next in pendingRich) {
+					if (current.length() >= richPerFile) {
+						write(file, current)
+						file += 1
+						current = JSONArray()
+					}
+					current.put(next)
+				}
+				write(file, current)
+				if (file != startFile || !richIndexFile.exists()) {
+					richIndexFile.writeText(encrypt(JSONObject().put("version", 1).put("file", file).toString()))
+				}
+				pendingRich.clear()
+				true
+			}.getOrElse { error ->
+				lastWriteError = "${error.javaClass.simpleName}: ${error.message ?: "shard write failed"}"
+				Log.e(TAG, "rich shard write failed in ${baseDir.absolutePath}", error)
+				false
+			}
+		}
+
+		/**
+		 * Drops rich-content records whose deletion has left the log, and media blobs nothing refers to.
+		 * Caller holds the mutex.
+		 *
+		 * Trimming the log to its limit never touched either, so shards and media grew for as long as
+		 * the plugin was installed, and every start decrypted every shard ever written. Blobs written in
+		 * the last ten minutes are kept: downloads happen before the lock, so a fresh blob may belong to
+		 * a capture that has not queued its record yet.
+		 */
+		fun pruneOrphansLocked() {
+			val live = entries.map { it.optString("id") }.toHashSet()
+			val referenced = HashSet<String>()
+			fun collect(value: Any?) {
+				when (value) {
+					is JSONObject -> {
+						value.optString("localFile").takeIf { it.isNotEmpty() }?.let { referenced.add(it) }
+						for (key in value.keys()) collect(value.opt(key))
+					}
+					is JSONArray -> for (i in 0 until value.length()) collect(value.opt(i))
+				}
+			}
+			var dropped = 0
+			val index = readJsonFile(richIndexFile) ?: JSONObject()
+			val last = index.optInt("file", 0).coerceAtLeast(0)
+			for (file in 1..last) {
+				val shard = richShard(file)
+				val old = readJsonFile(shard)?.optJSONArray("entries") ?: continue
+				val kept = JSONArray()
+				for (i in 0 until old.length()) {
+					val entry = old.optJSONObject(i) ?: continue
+					if (entry.optString("messageId") in live) {
+						kept.put(entry)
+						collect(entry)
+					}
+				}
+				if (kept.length() == old.length()) continue
+				dropped += old.length() - kept.length()
+				runCatching {
+					// The newest shard is still being filled, so it stays even when empty.
+					if (kept.length() == 0 && file != last) shard.delete()
+					else shard.writeText(encrypt(JSONObject().put("version", 1).put("entries", kept).toString()))
+				}.onFailure { Log.e(TAG, "pruning ${shard.name} failed", it) }
+			}
+			// A shard that failed to read above skipped `collect`, so its blobs would look orphaned.
+			// Only delete media when every shard was readable.
+			val unreadable = (1..last).any { richShard(it).exists() && readJsonFile(richShard(it)) == null }
+			for (record in pendingRich) collect(record)
+			var blobs = 0
+			if (!unreadable) {
+				val cutoff = System.currentTimeMillis() - 10 * 60 * 1000L
+				mediaDir.listFiles()?.forEach { blob ->
+					if (blob.isFile && blob.name.endsWith(".enc") && blob.name !in referenced && blob.lastModified() < cutoff) {
+						if (blob.delete()) blobs++
+					}
+				}
+			}
+			if (dropped > 0 || blobs > 0) log.i("pruned $dropped rich records and $blobs media files")
+		}
+
 		/**
 		 * The one place the log is actually written. Never throws: this runs on the per-delete path,
 		 * and an exception escaping a bridge handler coroutine is not a recoverable condition for the
@@ -414,6 +541,7 @@ val ghostLogNativeBeta = plugin {
 		fun flushLocked() {
 			if (dirty && writeLogNow()) dirty = false
 			if (editsDirty && writeEditsNow()) editsDirty = false
+			flushRichLocked()
 		}
 
 		/** Caller must hold the mutex. Marks dirty and writes immediately. */
@@ -592,53 +720,6 @@ val ghostLogNativeBeta = plugin {
 			}
 		}
 
-		fun persistRichLocked(rich: JSONObject, messageId: String, channelId: String, deletedAt: Long, perFile: Int) {
-			val index = (readJsonFile(richIndexFile) ?: JSONObject())
-			var file = index.optInt("file", 1).coerceAtLeast(1)
-			var target = richShard(file)
-			// Through readJsonFile, like every other reader: shards are written encrypted, and the
-			// envelope is itself valid JSON ({version, iv, payload}), so a plain JSONObject() parse
-			// "succeeded" with no `entries` in it. Every capture with media or embeds then rewrote the
-			// shard holding only itself, wiping every earlier deletion's attachments and embeds, so
-			// restored messages came back without their images.
-			var existing = readJsonFile(target) ?: JSONObject()
-			var oldEntries = existing.optJSONArray("entries") ?: JSONArray()
-			val limit = perFile.coerceIn(50, 100)
-			if (oldEntries.length() >= limit) {
-				file += 1
-				target = richShard(file)
-				existing = JSONObject()
-				oldEntries = JSONArray()
-			}
-			val next = JSONObject().apply {
-				put("messageId", messageId)
-				put("channelId", channelId)
-				put("deletedAt", deletedAt)
-				if (rich.has("attachments")) put("attachments", rich.optJSONArray("attachments"))
-				if (rich.has("embeds")) put("embeds", rich.optJSONArray("embeds"))
-			}
-			val out = JSONArray().put(next)
-			for (i in 0 until oldEntries.length()) {
-				if (out.length() >= limit) break
-				val old = oldEntries.optJSONObject(i) ?: continue
-				if (old.optString("messageId") != messageId) out.put(old)
-			}
-			existing.put("version", 1).put("entries", out)
-			// Guarded for the same reason writeLogNow is: this runs on the per-delete path, and an
-			// unwritable base dir must degrade to "rich content not saved", never to an exception
-			// escaping the handler coroutine.
-			runCatching {
-				target.parentFile?.mkdirs()
-				target.writeText(encrypt(existing.toString()))
-				if (file != index.optInt("file", 1) || !richIndexFile.exists()) {
-					richIndexFile.writeText(encrypt(JSONObject().put("version", 1).put("file", file).toString()))
-				}
-			}.onFailure { error ->
-				lastWriteError = "${error.javaClass.simpleName}: ${error.message ?: "shard write failed"}"
-				Log.e(TAG, "rich shard write failed to ${target.absolutePath}", error)
-			}
-		}
-
         fun loadEditsLocked() {
             edits.clear()
             val raw = runCatching { editsFile.readText() }.getOrNull() ?: return
@@ -661,13 +742,115 @@ val ghostLogNativeBeta = plugin {
             }
         }
 
+		/**
+		 * Revenge 1.7 moved plugin storage from `storage/<id>/` to `storage/<slot>/<id>/` and left the
+		 * old folder where it was, so every app-private log (the default location is relative, so it
+		 * lives inside storageDir) started over empty. Worse, the JS settings reset with it: a log that
+		 * was unlimited went back to 100 entries, and the next start trimmed and pruned the rest.
+		 *
+		 * This folds the old folder into the new one, once: entries, edits and rich records are
+		 * unioned by id (the new copy wins a clash), media blobs and any other file are copied only
+		 * where the new folder has none. Nothing is overwritten and the old folder is left as it is,
+		 * so it can be run again by deleting the marker. A shared-storage log (Download/GhostLog) was
+		 * never inside storageDir and is untouched.
+		 */
+		fun mergeLegacyStorage() {
+			val slotRoot = storageDir.parentFile ?: return
+			val storage = slotRoot.parentFile ?: return
+			if (slotRoot.name == "storage" || storage.name != "storage") return
+			val legacy = File(storage, storageDir.name)
+			if (!legacy.isDirectory) return
+			val marker = File(legacy, ".merged-into-${slotRoot.name}")
+			if (marker.exists()) return
+
+			fun readArray(file: File): JSONArray? {
+				if (!file.isFile) return null
+				val raw = runCatching { file.readText() }.getOrNull() ?: return null
+				return runCatching { JSONArray(decrypt(raw) ?: return null) }.getOrNull()
+			}
+			fun objects(arr: JSONArray?) = (0 until (arr?.length() ?: 0)).mapNotNull { arr!!.optJSONObject(it) }
+
+			/** Union by [key]; [mine] first so its copy wins. Null when [theirs] adds nothing. */
+			fun union(mine: List<JSONObject>, theirs: List<JSONObject>, key: String): MutableList<JSONObject>? {
+				val seen = mine.mapNotNull { it.optString(key).ifBlank { null } }.toHashSet()
+				val added = theirs.filter { it.optString(key).let { id -> id.isNotEmpty() && seen.add(id) } }
+				return if (added.isEmpty()) null else (mine + added).toMutableList()
+			}
+
+			fun shardFile(dir: File, n: Int) = File(dir, "deleted-embeds-%05d.json".format(n))
+			fun readShards(dir: File): List<JSONObject> {
+				val index = readJsonFile(File(dir, "deleted-embeds.index.v1.json")) ?: return emptyList()
+				return (1..index.optInt("file", 0).coerceAtLeast(0)).flatMap {
+					objects(readJsonFile(shardFile(dir, it))?.optJSONArray("entries"))
+				}
+			}
+
+			/** One base dir: the folder holding deleted-log.json.enc, the shards and media/. */
+			fun mergeBase(from: File, to: File) {
+				to.mkdirs()
+				val log = File(to, "deleted-log.json.enc")
+				union(objects(readArray(log)), objects(readArray(File(from, log.name))), "id")?.let { merged ->
+					merged.sortByDescending { it.optLong("deletedAt", 0L) }
+					log.writeText(encrypt(JSONArray(merged).toString()))
+					Log.i(TAG, "legacy merge: log now ${merged.size} entries")
+				}
+				val editsLog = File(to, "edited-log.json.enc")
+				union(objects(readArray(editsLog)), objects(readArray(File(from, editsLog.name))), "id")?.let { merged ->
+					merged.sortByDescending { it.optLong("editedAt", 0L) }
+					editsLog.writeText(encrypt(JSONArray(merged).toString()))
+				}
+				// Shard numbers collide between the two folders, so the union is rewritten from shard 1.
+				union(readShards(to), readShards(from), "messageId")?.let { merged ->
+					val chunks = merged.chunked(100)
+					chunks.forEachIndexed { i, chunk ->
+						shardFile(to, i + 1).writeText(encrypt(JSONObject().put("version", 1).put("entries", JSONArray(chunk)).toString()))
+					}
+					var stale = chunks.size + 1
+					while (shardFile(to, stale).delete()) stale++
+					File(to, "deleted-embeds.index.v1.json")
+						.writeText(encrypt(JSONObject().put("version", 1).put("file", chunks.size).toString()))
+				}
+			}
+
+			val handled = setOf("deleted-log.json.enc", "edited-log.json.enc", "deleted-embeds.index.v1.json")
+			val shardName = Regex("""^deleted-embeds-\d{5}\.json$""")
+			runCatching {
+				// Every folder that held a log: the root (storage fell back) and the relative default
+				// (GhostLog/), or wherever a relative custom path pointed.
+				legacy.walkTopDown()
+					.onEnter { it.name != "mediacache" }
+					.filter { it.isDirectory && (File(it, "deleted-log.json.enc").isFile || File(it, "deleted-embeds.index.v1.json").isFile) }
+					.forEach { from -> mergeBase(from, File(storageDir, from.relativeTo(legacy).path)) }
+				var copied = 0
+				legacy.walkTopDown()
+					.onEnter { it.name != "mediacache" }
+					.filter { it.isFile && it.name !in handled && !shardName.matches(it.name) && !it.name.startsWith(".merged-into-") }
+					.forEach { src ->
+						val dst = File(storageDir, src.relativeTo(legacy).path)
+						// A top-level .json is the JS settings (jsonStorage), which the move reset to
+						// defaults. The old one wins, or the 100-entry default would trim the merged log
+						// straight back down at the next setLimits. The reset copy is kept beside it.
+						val settings = src.parentFile == legacy && src.name.endsWith(".json")
+						if (!dst.exists() || (settings && dst.readText() != src.readText())) {
+							dst.parentFile?.mkdirs()
+							if (dst.exists()) dst.copyTo(File(dst.parentFile, "${dst.name}.before-merge"), overwrite = true)
+							src.copyTo(dst, overwrite = true)
+							copied++
+						}
+					}
+				marker.writeText(System.currentTimeMillis().toString())
+				Log.i(TAG, "legacy merge from ${legacy.absolutePath}: $copied files copied")
+			}.onFailure { Log.e(TAG, "legacy merge from ${legacy.absolutePath} failed", it) }
+		}
+
+		mergeLegacyStorage()
         loadLocked()
 
         registerNativeAsyncMethod("${manifest.id}.captureDeleted") { args ->
             val map = args.getOrNull(0) as? Map<*, *> ?: return@registerNativeAsyncMethod false
             val entry = JSONObject(map)
 			val rich = entry.optJSONObject("richContent")
-			val richPerFile = entry.optInt("richContentPerFile", 100)
+			val perFile = entry.optInt("richContentPerFile", 100)
 			// The whole base dir (log + shards + media) lives next to the backup file, whose path is
 			// a JS setting. It rides along on the capture payload so a late configure is still safe.
 			val backupPath = entry.optString("backupPath").ifBlank { null }
@@ -695,11 +878,14 @@ val ghostLogNativeBeta = plugin {
                 // Coalesced, not written outright: see PERSIST_DEBOUNCE_MS. Every read path flushes
                 // first, so nothing can observe the gap.
                 schedulePersistLocked()
-				if (rich != null) persistRichLocked(rich, id, entry.optString("channelId"), entry.optLong("deletedAt"), richPerFile)
+				// Queued for the same coalesced flush as the log, not written outright.
+				if (rich != null) queueRichLocked(rich, id, entry.optString("channelId"), entry.optLong("deletedAt"), perFile)
                 entries.size
             }
             log.i("captured deletion id=$id count=$count")
-            true
+			// The rich content as saved, each media object now naming its encrypted copy, so the JS
+			// cache can show the saved media without waiting for a reload.
+			rich?.toString() ?: true
         }
 
         registerNativeAsyncMethod("${manifest.id}.getLog") { _ ->
@@ -814,6 +1000,8 @@ val ghostLogNativeBeta = plugin {
 		registerNativeAsyncMethod("${manifest.id}.getRichContent") { args ->
 			val ids = (args.getOrNull(0) as? List<*>)?.mapNotNull { it as? String }?.toHashSet() ?: emptySet()
 			mutex.withLock {
+				// Queued records are written first, or a capture inside the flush window has no media.
+				flushLocked()
 				val out = JSONObject()
 				val index = (readJsonFile(richIndexFile) ?: JSONObject())
 				for (file in 1..(index.optInt("file", 0).coerceAtLeast(0))) {
@@ -840,6 +1028,71 @@ val ghostLogNativeBeta = plugin {
 			val file = File(mediaDir, name)
 			if (!file.exists()) return@registerNativeAsyncMethod null
 			decryptMediaToCacheFile(file, name)
+		}
+
+		// Decoding a video frame holds the whole frame in memory and keeps a decoder busy, so the media
+		// grid asks for these a couple at a time however fast it scrolls.
+		val thumbSemaphore = Semaphore(2)
+
+		/**
+		 * getMediaThumb(name) -> a file:// JPEG of a saved video's first frame, for the media grid and
+		 * the log's thumbnails. React Native's Image cannot draw a frame out of an mp4. Kept beside
+		 * the decrypted copies, so it is wiped with them. Null when the blob is missing, will not
+		 * decrypt, or has no decodable frame (audio, a damaged file).
+		 */
+		registerNativeAsyncMethod("${manifest.id}.getMediaThumb") { args ->
+			val name = args.getOrNull(0) as? String ?: return@registerNativeAsyncMethod null
+			if (name.contains('/') || name.contains('\\') || !name.endsWith(".enc")) {
+				return@registerNativeAsyncMethod null
+			}
+			val thumb = File(ensureMediaCacheDir(), name.removeSuffix(".enc") + ".thumb.jpg")
+			if (thumb.isFile && thumb.length() > 0L) return@registerNativeAsyncMethod "file://" + thumb.absolutePath
+			val blob = File(mediaDir, name)
+			if (!blob.exists()) return@registerNativeAsyncMethod null
+			thumbSemaphore.withPermit {
+				val uri = decryptMediaToCacheFile(blob, name) ?: return@withPermit null
+				runCatching {
+					val retriever = MediaMetadataRetriever()
+					try {
+						retriever.setDataSource(uri.removePrefix("file://"))
+						val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+							?: return@runCatching null
+						// Grid tiles are small; a full-resolution frame would be most of a megabyte each.
+						val scale = 480f / maxOf(frame.width, frame.height)
+						val small = if (scale < 1f) {
+							Bitmap.createScaledBitmap(frame, (frame.width * scale).toInt(), (frame.height * scale).toInt(), true)
+						} else frame
+						thumb.outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, 80, it) }
+						if (small !== frame) small.recycle()
+						frame.recycle()
+						"file://" + thumb.absolutePath
+					} finally {
+						runCatching { retriever.release() }
+					}
+				}.onFailure { Log.w(TAG, "thumbnail failed for $name", it) }.getOrNull()
+			}
+		}
+
+		// removeEntry(id) -> true when it was in the log. Its rich content and media go at the next
+		// start's prune, which already handles records whose deletion has left the log.
+		registerNativeAsyncMethod("${manifest.id}.removeEntry") { args ->
+			val id = args.getOrNull(0) as? String ?: return@registerNativeAsyncMethod false
+			mutex.withLock {
+				pendingRich.removeAll { it.optString("messageId") == id }
+				val removed = entries.removeAll { it.optString("id") == id }
+				if (removed) schedulePersistLocked()
+				removed
+			}
+		}
+
+		// removeEdit(id) -> true when that message had an edit record.
+		registerNativeAsyncMethod("${manifest.id}.removeEdit") { args ->
+			val id = args.getOrNull(0) as? String ?: return@registerNativeAsyncMethod false
+			mutex.withLock {
+				val removed = edits.removeAll { it.optString("id") == id }
+				if (removed) scheduleEditsPersistLocked()
+				removed
+			}
 		}
 
 		// repairMedia(name, url) -> true when the blob now opens. For a saved copy that exists but
@@ -924,6 +1177,7 @@ val ghostLogNativeBeta = plugin {
         registerNativeAsyncMethod("${manifest.id}.clearLog") { _ ->
             mutex.withLock {
                 entries.clear()
+                pendingRich.clear()
                 persistNowLocked()
                 // Clearing the log must also drop the rolling embed shards, their index, and every
                 // downloaded image, otherwise stale media/shards linger and reattach on next load.
@@ -957,6 +1211,9 @@ val ghostLogNativeBeta = plugin {
                 persistNowLocked()
             }
             log.i("setLimits max=$maxEntries unlimited=$unlimitedEntries")
+			// JS sends the limits once per start, after the log is loaded: the moment to clear out what
+			// earlier trims left behind. Off the call, since it reads every shard.
+			scope.launch { mutex.withLock { pruneOrphansLocked() } }
             true
         }
 
@@ -1120,6 +1377,7 @@ val ghostLogNativeBeta = plugin {
 					loadLocked()
 					dirty = false
 					editsDirty = false
+					pendingRich.clear()
 					wipeMediaCache()
 					log.i("imported bundle from $path (${entries.size} entries)")
 					entries.size

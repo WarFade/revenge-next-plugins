@@ -30,7 +30,7 @@ export interface DeletedMessage {
 	attachments?: any[]
 	embeds?: any[]
 	// Captured so a message rebuilt from the log is not a stripped-down copy of itself. A single
-	// delete keeps its real record in the store (the dispatcher converts the event), but a BULK
+	// delete keeps its real record in the store (the delete event is blocked), but a BULK
 	// delete does not -- those messages are genuinely removed and come back only through
 	// render-restore, which builds from these fields. Without them a purged reply lost its reply
 	// context and every mention rendered as raw markup.
@@ -224,6 +224,34 @@ export function addToCache(entry: DeletedMessage) {
 	if (addTimer === undefined) addTimer = setTimeout(flushAdds, ADD_FLUSH_MS)
 }
 
+/**
+ * Swap a cached entry's media for what native actually saved (objects carrying `localFile`), then let
+ * its channel resolve the saved copies. The entry may still be staged rather than in `cache`.
+ */
+export function updateCachedMedia(messageId: string, attachments?: any[], embeds?: any[]) {
+	const entry = pendingAdds.find(e => e.id === messageId) ?? cache.find(e => e.id === messageId)
+	if (!entry) return
+	if (Array.isArray(attachments)) entry.attachments = attachments
+	if (Array.isArray(embeds)) entry.embeds = embeds
+	rehydratedChannels.delete(entry.channelId)
+	rehydrateAttempts.delete(entry.channelId)
+	// A staged entry is picked up by the flush, which notifies; one already in the cache needs it now.
+	if (!pendingAdds.includes(entry)) notify()
+}
+
+/** Takes one deletion out of the log, here and in native. */
+export async function removeFromLog(messageId: string): Promise<void> {
+	try {
+		await callNativeMethod(`${ID}.removeEntry`, [messageId])
+	} catch (error) {
+		console.error('[GhostLogNativeBeta] removeEntry failed:', error)
+	}
+	const staged = pendingAdds.findIndex(entry => entry.id === messageId)
+	if (staged >= 0) pendingAdds.splice(staged, 1)
+	cache = cache.filter(entry => entry.id !== messageId)
+	notify()
+}
+
 /** Fold any staged captures in now. Call before anything that reads the cache as authoritative. */
 export function flushPendingAdds() {
 	if (addTimer !== undefined) {
@@ -235,6 +263,24 @@ export function flushPendingAdds() {
 
 export function getCachedLog(): DeletedMessage[] {
 	return cache
+}
+
+let loggedIds = new Set<string>()
+let loggedIdsVersion = -1
+
+/**
+ * Whether a message id is in the deleted log, in O(1). Messages restored after a reload exist only in
+ * what render-restore hands the chat, so `MessageStore.getMessage` cannot find them; this can.
+ * Staged captures count too, so a message is known the moment it is caught.
+ */
+export function isLoggedId(messageId: string): boolean {
+	if (loggedIdsVersion !== version) {
+		loggedIdsVersion = version
+		loggedIds = new Set(cache.map(entry => entry.id))
+	}
+	if (loggedIds.has(messageId)) return true
+	for (const entry of pendingAdds) if (entry.id === messageId) return true
+	return false
 }
 
 /** React hook: subscribe to native log updates and trigger a load on first mount. */

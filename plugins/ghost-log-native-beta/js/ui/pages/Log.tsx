@@ -1,153 +1,179 @@
-import { dangerIcon, rowIcon } from '../icon'
-import { useBottomPadding } from '../safeArea'
-import { groupHeaderText } from '../theme'
-import { clearNativeLog, refreshLog, useLog, type DeletedMessage } from '../state'
+import { confirmDestructive } from '../../../../../shared/ui/confirm'
+import { savedMedia } from '../../lib/media'
 import { jumpToDeletedMessage } from '../../lib/navigate'
-import Avatar from '../components/Avatar'
-import Pager from '../components/Pager'
+import { ago, ChannelHeader, FilterBar, MessageCard } from '../components/Message'
+import { dangerIcon } from '../icon'
+import { Empty } from '../native'
+import { useBottomPadding } from '../safeArea'
+import { openDeletedSheet, pressMedia } from '../sheets'
+import { clearNativeLog, type DeletedMessage, refreshLog, useLog } from '../state'
 
-function ago(timestamp: number): string {
-	const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
-	if (seconds < 60) return 'just now'
-	if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-	if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-	return `${Math.floor(seconds / 86400)}d ago`
+type Filter = 'all' | 'servers' | 'dms' | 'media'
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+	{ id: 'all', label: 'All' },
+	{ id: 'servers', label: 'Servers' },
+	{ id: 'dms', label: 'DMs' },
+	{ id: 'media', label: 'Media' },
+]
+
+type Row = { type: 'header'; key: string; entry: DeletedMessage } | { type: 'message'; key: string; entry: DeletedMessage }
+
+function matches(entry: DeletedMessage, filter: Filter, query: string): boolean {
+	if (filter === 'servers' && !entry.guildId) return false
+	if (filter === 'dms' && entry.guildId) return false
+	if (filter === 'media' && !savedMedia(entry).length && !entry.attachments?.length) return false
+	if (!query) return true
+	const haystack = [
+		entry.content,
+		entry.authorName,
+		entry.channelName,
+		entry.guildName,
+		...(entry.attachments ?? []).map(attachment => attachment?.filename),
+	]
+	return haystack.some(text => typeof text === 'string' && text.toLowerCase().includes(query))
 }
 
-function groupByOrigin(entries: DeletedMessage[]) {
-	const groups = new Map<string, { label: string; icon?: string; id?: string; items: DeletedMessage[] }>()
-
+/** Newest first, with a channel header wherever the channel changes, like search results. */
+function toRows(entries: DeletedMessage[]): Row[] {
+	const rows: Row[] = []
+	let channel: string | undefined
 	for (const entry of entries) {
-		const key = entry.guildId ?? '@me'
-		const existing = groups.get(key)
-		if (existing) existing.items.push(entry)
-		else {
-			groups.set(key, {
-				label: entry.guildName ?? 'Direct messages',
-				icon: entry.guildIcon,
-				id: entry.guildId,
-				items: [entry],
-			})
+		if (entry.channelId !== channel) {
+			channel = entry.channelId
+			rows.push({ type: 'header', key: `h:${entry.id}`, entry })
 		}
+		rows.push({ type: 'message', key: entry.id, entry })
 	}
-
-	return [...groups.values()]
+	return rows
 }
 
+/**
+ * Every caught deletion, drawn like Discord's search results: a channel header, then each message as
+ * chat shows one, with its saved media. Tap jumps to where it was; long-press for the rest.
+ */
 export default function Log() {
 	const { Page } = revenge.components
 	const { React } = revenge.react
-	const { ScrollView, View, Text, Alert } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow } = revenge.discord.design.Design
+	const { FlatList, RefreshControl, View } = revenge.react.ReactNative as any
+	const { TableRowGroup, TableRow, Text } = revenge.discord.design.Design as any
 
 	const entries = useLog()
-	const pageSize = 50
-	const totalPages = Math.max(1, Math.ceil(entries.length / pageSize))
-	const [page, setPage] = React.useState(1)
-	const safePage = Math.min(Math.max(1, page), totalPages)
-	const start = (safePage - 1) * pageSize
-	const end = start + pageSize
-	const pagedEntries = entries.slice(start, end)
-	const grouped = groupByOrigin(pagedEntries)
 	const bottomPadding = useBottomPadding()
+	const [query, setQuery] = React.useState('')
+	const [filter, setFilter] = React.useState<Filter>('all')
+	const [refreshing, setRefreshing] = React.useState(false)
 
-	const clearLog = () => {
-		Alert.alert('Clear log', `Remove all ${entries.length} deleted-message entries?`, [
-			{ text: 'Cancel', style: 'cancel' },
-			{ text: 'Clear', style: 'destructive', onPress: () => void clearNativeLog() },
-		])
+	const needle = query.trim().toLowerCase()
+	const shown = React.useMemo(() => entries.filter(entry => matches(entry, filter, needle)), [entries, filter, needle])
+	const rows = React.useMemo(() => toRows(shown), [shown])
+
+	const refresh = () => {
+		setRefreshing(true)
+		void refreshLog().finally(() => setRefreshing(false))
 	}
 
-	if (!entries.length) {
+	const renderItem = ({ item }: { item: Row }) => {
+		const entry = item.entry
+		if (item.type === 'header') {
+			return (
+				<ChannelHeader
+					guildId={entry.guildId}
+					guildName={entry.guildName}
+					guildIcon={entry.guildIcon}
+					channelName={entry.channelName}
+				/>
+			)
+		}
+		const media = savedMedia(entry)
+		const unsaved = (entry.attachments?.length ?? 0) - media.filter(m => m.key.includes(':a')).length
 		return (
-			<Page>
-				<ScrollView contentContainerStyle={{ paddingBottom: bottomPadding }}>
-					<TableRowGroup title="Nothing caught yet">
-						<TableRow
-							label="No deleted messages"
-							subLabel="Deleted messages will show up here as they are caught natively."
-						/>
-						<TableRow
-							label="Refresh"
-							subLabel="Re-read the native log."
-							icon={rowIcon('RefreshIcon', 'ic_refresh')}
-							onPress={() => void refreshLog()}
-						/>
-					</TableRowGroup>
-				</ScrollView>
-			</Page>
+			<MessageCard
+				authorId={entry.authorId}
+				authorName={entry.authorName}
+				authorAvatar={entry.authorAvatar}
+				sentAt={entry.sentAt}
+				content={entry.content}
+				reply={
+					entry.referencedMessage
+						? {
+								name: entry.referencedMessage.author?.global_name ?? entry.referencedMessage.author?.username,
+								content: entry.referencedMessage.content,
+							}
+						: undefined
+				}
+				media={media}
+				footerIcon="TrashIcon"
+				footerDanger
+				footer={`Deleted ${ago(entry.deletedAt)}${unsaved > 0 ? ` · ${unsaved} attachment${unsaved === 1 ? '' : 's'} not saved` : ''}`}
+				onPress={() => jumpToDeletedMessage(entry)}
+				onLongPress={() => openDeletedSheet(entry)}
+				onPressMedia={index => pressMedia(media, index)}
+			/>
 		)
 	}
 
+	const header = (
+		<FilterBar
+			query={query}
+			onQuery={setQuery}
+			placeholder="Search deleted messages"
+			filters={FILTERS}
+			filter={filter}
+			onFilter={setFilter}
+		/>
+	)
+
+	const footer = entries.length ? (
+		<View style={{ paddingHorizontal: 16, paddingTop: 24, gap: 8 }}>
+			<Text variant="text-xs/medium" color="text-muted" style={{ textAlign: 'center' }}>
+				{shown.length === entries.length
+					? `${entries.length} deleted message${entries.length === 1 ? '' : 's'}`
+					: `${shown.length} of ${entries.length} deleted messages`}
+			</Text>
+			<TableRowGroup hasIcons>
+				<TableRow
+					variant="danger"
+					label="Clear log"
+					subLabel="Removes every deleted message and its saved media."
+					icon={dangerIcon('TrashIcon', 'ic_trash')}
+					onPress={() =>
+						confirmDestructive({
+							title: 'Clear log?',
+							body: `All ${entries.length} deleted messages and their saved media are removed for good.`,
+							action: 'Clear',
+							onConfirm: () => void clearNativeLog(),
+						})
+					}
+				/>
+			</TableRowGroup>
+		</View>
+	) : null
+
 	return (
 		<Page>
-			<ScrollView contentContainerStyle={{ paddingBottom: bottomPadding }}>
-				<Stack spacing={24}>
-					{totalPages > 1 ? <Pager page={safePage} totalPages={totalPages} onChange={setPage} /> : null}
-
-					{grouped.map(group => (
-						<View key={group.id ?? '@me'}>
-							<View
-								style={{
-									flexDirection: 'row',
-									alignItems: 'center',
-									gap: 8,
-									paddingHorizontal: 16,
-									paddingBottom: 8,
-								}}
-							>
-								<Avatar kind="guild" id={group.id} hash={group.icon} name={group.label} size={20} />
-								<Text style={{ color: groupHeaderText(), fontSize: 12, fontWeight: '600' }}>
-									{group.label.toUpperCase()}
-								</Text>
-							</View>
-
-							<TableRowGroup>
-								{group.items.map(entry => {
-									const attachments = entry.attachments?.length
-										? ` [${entry.attachments.length} attachment${entry.attachments.length > 1 ? 's' : ''}]`
-										: ''
-									const preview = (entry.content || '(no text)').slice(0, 280)
-
-									return (
-										<TableRow
-											key={entry.id}
-											icon={
-												<Avatar
-													kind="user"
-													id={entry.authorId}
-													hash={entry.authorAvatar}
-													name={entry.authorName}
-												/>
-											}
-											label={entry.authorName}
-											subLabel={`${preview}${attachments}\n${entry.channelName} · ${ago(entry.deletedAt)}`}
-											onPress={() => jumpToDeletedMessage(entry)}
-											arrow
-										/>
-									)
-								})}
-							</TableRowGroup>
-						</View>
-					))}
-
-					<TableRowGroup title="Manage" hasIcons>
-						<TableRow
-							label="Refresh"
-							subLabel={`${entries.length} entries in the native log.`}
-							icon={rowIcon('RefreshIcon', 'ic_refresh')}
-							onPress={() => void refreshLog()}
+			<FlatList
+				data={rows}
+				keyExtractor={(row: Row) => row.key}
+				renderItem={renderItem}
+				ListHeaderComponent={header}
+				ListFooterComponent={footer}
+				ListEmptyComponent={
+					entries.length ? (
+						<Empty title="No matches" body="Nothing in the log matches that search." />
+					) : (
+						<Empty
+							title="No deleted messages yet"
+							body="When someone deletes a message Discord had loaded, it shows up here."
 						/>
-						<TableRow
-							variant="danger"
-							label="Clear log"
-							subLabel={`Removes all ${entries.length} entries.`}
-							icon={dangerIcon('TrashIcon', 'ic_trash')}
-							onPress={clearLog}
-						/>
-					</TableRowGroup>
-				</Stack>
-			</ScrollView>
+					)
+				}
+				keyboardShouldPersistTaps="handled"
+				refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+				contentContainerStyle={{ paddingBottom: bottomPadding }}
+				initialNumToRender={12}
+				windowSize={7}
+			/>
 		</Page>
 	)
 }

@@ -59,7 +59,7 @@ function rememberMediaUri(localFile: string, uri: string) {
 }
 
 /** Resolve one encrypted media blob to a playable/renderable URI via native, cached by file name. */
-async function resolveMediaUri(localFile: string): Promise<string | undefined> {
+export async function resolveMediaUri(localFile: string): Promise<string | undefined> {
 	if (!localFile) return undefined
 	const cached = mediaUriCache.get(localFile)
 	if (cached) return cached

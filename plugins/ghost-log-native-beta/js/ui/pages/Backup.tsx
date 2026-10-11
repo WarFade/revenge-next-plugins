@@ -8,6 +8,7 @@ import {
 } from '../../defaults'
 import { getSettingsStorage, refreshLog, refreshStorageStatus, useLog, useStorageStatus } from '../state'
 import { rowIcon } from '../icon'
+import { showToast } from '../../../../../shared/toast'
 import { refreshEdits, useEdits } from '../../lib/edits'
 import { useBottomPadding } from '../safeArea'
 import type { GhostLogSettings } from '../../types'
@@ -39,8 +40,7 @@ export default function Backup() {
 	const anything = count + editCount
 	const status = useStorageStatus()
 
-	const toast = (content: string) =>
-		revenge.discord.actions.ToastActionCreators.open({ key: 'ghost-log-native-beta-backup', content })
+	const toast = (content: string) => showToast(content, 'ghost-log-native-beta-backup')
 
 	const path = s.backupFilePath?.trim() || DEFAULT_BACKUP_PATH
 

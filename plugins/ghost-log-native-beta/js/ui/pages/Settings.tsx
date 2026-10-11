@@ -1,14 +1,14 @@
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
-import { EDITS_ROUTE, LOG_ROUTE, OPTIONS_ROUTE, VISUALS_ROUTE, BACKUP_ROUTE, LICENSE_ROUTE, DEBUG_ROUTE } from '../routes'
+import { EDITS_ROUTE, LOG_ROUTE, MEDIA_ROUTE, OPTIONS_ROUTE, VISUALS_ROUTE, BACKUP_ROUTE, LICENSE_ROUTE, DEBUG_ROUTE } from '../routes'
 import { useLog, useStorageStatus } from '../state'
 import { useEdits } from '../../lib/edits'
+import { allSavedMedia, formatBytes } from '../../lib/media'
 import { useChangelog } from '../../../../../shared/changelog'
 
 /**
- * Root page for the native beta. Warning card (this is a message logger), then the Deleted
- * messages route in a group of its own. Backup / Visual style land in later parity phases, so the
- * index is intentionally lean for now.
+ * Root page. The warning card (this is a message logger), then what has been caught, then how it is
+ * caught and kept, then the licence and the developer page.
  */
 export default function Settings() {
 	const { Page } = revenge.components
@@ -22,6 +22,8 @@ export default function Settings() {
 	const entries = useLog()
 	const edited = useEdits()
 	const status = useStorageStatus()
+	const media = allSavedMedia(entries)
+	const mediaBytes = media.reduce((sum, item) => sum + (item.size ?? 0), 0)
 
 	return (
 		<Page>
@@ -41,9 +43,9 @@ export default function Settings() {
 								⚠️ This is a message logger
 							</Text>
 							<Text color="text-muted" variant="text-sm/normal" style={{ marginTop: 8 }}>
-								This native beta stores deleted message text encrypted on this device. Client mods already
-								break Discord's Terms of Service, and message loggers are the kind most associated with
-								accounts being actioned. Only you can see the log, but the risk is yours.
+								Deleted and edited messages are kept, encrypted, on this device. Client mods break
+								Discord's Terms of Service, and message loggers are the kind most associated with accounts
+								being actioned. Only you can see the log, but the risk is yours.
 							</Text>
 						</View>
 					</Card>
@@ -68,12 +70,11 @@ export default function Settings() {
 						</Card>
 					) : null}
 
-					<Text color="text-muted" variant="text-sm/normal">
-						Only messages Discord had loaded can be caught — one deleted in a channel you never opened was
-						never cached.
-					</Text>
-
-					<TableRowGroup hasIcons>
+					<TableRowGroup
+						title="Caught"
+						description="Only messages Discord had loaded can be caught. One deleted in a channel you never opened was never on this device."
+						hasIcons
+					>
 						<TableRow
 							label="Deleted messages"
 							subLabel={entries.length ? `${entries.length} caught` : 'Nothing caught yet'}
@@ -88,30 +89,44 @@ export default function Settings() {
 							arrow
 							onPress={() => navigation.navigate(EDITS_ROUTE)}
 						/>
+						<TableRow
+							label="Deleted media"
+							subLabel={
+								media.length
+									? `${media.length} saved${mediaBytes ? ` · ${formatBytes(mediaBytes)}` : ''}`
+									: 'Nothing saved yet'
+							}
+							icon={rowIcon('ImagesIcon', 'ImageIcon')}
+							arrow
+							onPress={() => navigation.navigate(MEDIA_ROUTE)}
+						/>
 					</TableRowGroup>
 
-					<TableRowGroup hasIcons>
+					<TableRowGroup title="Options" hasIcons>
 						<TableRow
-							label="Settings"
-							subLabel="Logging, notifications, limits"
+							label="Logging"
+							subLabel="What gets caught, notifications, limits"
 							icon={rowIcon('SettingsIcon', 'ic_settings')}
 							arrow
 							onPress={() => navigation.navigate(OPTIONS_ROUTE)}
 						/>
 						<TableRow
-							label="Backup"
-							subLabel="Encrypted backup location and restore"
-							icon={rowIcon('FolderIcon', 'ic_folder')}
-							arrow
-							onPress={() => navigation.navigate(BACKUP_ROUTE)}
-						/>
-						<TableRow
 							label="Visual style"
-							subLabel="How deleted messages appear in chat"
+							subLabel="How deleted messages look in chat"
 							icon={rowIcon('PaintPaletteIcon', 'PaintbrushThinIcon')}
 							arrow
 							onPress={() => navigation.navigate(VISUALS_ROUTE)}
 						/>
+						<TableRow
+							label="Backup"
+							subLabel="Where the log is kept, export and restore"
+							icon={rowIcon('FolderIcon', 'ic_folder')}
+							arrow
+							onPress={() => navigation.navigate(BACKUP_ROUTE)}
+						/>
+					</TableRowGroup>
+
+					<TableRowGroup title="About" hasIcons>
 						<TableRow
 							label="Licence"
 							subLabel="CC0-1.0, with parts under BSD-3-Clause"

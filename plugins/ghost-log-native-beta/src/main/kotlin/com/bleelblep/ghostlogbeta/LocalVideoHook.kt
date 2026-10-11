@@ -2,8 +2,6 @@ package com.bleelblep.ghostlogbeta
 
 import android.net.Uri
 import android.util.Log
-import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedBridge
 import java.io.File
 import java.io.RandomAccessFile
 import java.lang.reflect.InvocationHandler

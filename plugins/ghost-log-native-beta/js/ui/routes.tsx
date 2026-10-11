@@ -1,5 +1,6 @@
 import Log from './pages/Log'
 import Edits from './pages/Edits'
+import Media from './pages/Media'
 import Options from './pages/Options'
 import Visuals from './pages/Visuals'
 import Backup from './pages/Backup'
@@ -10,6 +11,7 @@ const PREFIX = 'bleelblep.ghost-log-native-beta'
 
 export const LOG_ROUTE = `${PREFIX}.log`
 export const EDITS_ROUTE = `${PREFIX}.edits`
+export const MEDIA_ROUTE = `${PREFIX}.media`
 export const OPTIONS_ROUTE = `${PREFIX}.options`
 export const VISUALS_ROUTE = `${PREFIX}.visuals`
 export const BACKUP_ROUTE = `${PREFIX}.backup`
@@ -48,10 +50,16 @@ export function registerPages(): () => void {
 				useTitle: () => 'Edited messages',
 				screen: { route: EDITS_ROUTE, getComponent: () => Edits },
 			}),
+			registerSettingsItem(MEDIA_ROUTE, {
+				parent: null,
+				type: 'route',
+				useTitle: () => 'Deleted media',
+				screen: { route: MEDIA_ROUTE, getComponent: () => Media },
+			}),
 			registerSettingsItem(OPTIONS_ROUTE, {
 				parent: null,
 				type: 'route',
-				useTitle: () => 'Settings',
+				useTitle: () => 'Logging',
 				screen: { route: OPTIONS_ROUTE, getComponent: () => Options },
 			}),
 			registerSettingsItem(VISUALS_ROUTE, {

@@ -2,13 +2,15 @@ import { callNativeMethod } from './lib/native'
 import { DEFAULT_BACKUP_PATH, DEFAULTS } from './defaults'
 import patchBlockGhostActions from './patches/blockGhostActions'
 import { patchRenderRestore } from './lib/restore'
-import { mentionUsers, patchVisuals } from './lib/visuals'
+import { isEphemeral, mentionUsers, patchVisuals } from './lib/visuals'
+import { isDeletedMessage, markKept, redrawKept } from './lib/deleted'
 import { registerPages } from './ui/routes'
-import { addToCache, flushPendingAdds, refreshLog, refreshStorageStatus, setSettingsStorage } from './ui/state'
+import { addToCache, flushPendingAdds, refreshLog, refreshStorageStatus, setSettingsStorage, updateCachedMedia } from './ui/state'
 import { stopAllProbes } from './lib/probe'
 import { richContentForCapture } from './lib/richContent'
 import { captureEdit, refreshEdits } from './lib/edits'
 import { setupChangelog } from '../../../shared/changelog'
+import { showToast } from '../../../shared/toast'
 import { CHANGELOG } from './changelog'
 import Settings from './ui/pages/Settings'
 import type { GhostLogSettings } from './types'
@@ -45,19 +47,27 @@ function describe(message: any, channelId: string) {
 }
 
 async function capture(entry: Record<string, unknown>, toast: boolean, authorName: string, channelName: string) {
+	// Into the cache first, in the same complete shape a reload gets from the rich-content sidecar.
+	// It used to wait for the native call, which downloads the message's media before it returns
+	// (up to two minutes for a video, four at a time) -- and a bulk-deleted message is shown only
+	// from this cache, so it stayed gone from the chat for that whole wait.
+	addToCache({ ...entry, ...((entry as any).richContent ?? {}) } as any)
 	try {
-		await callNativeMethod(`${ID}.captureDeleted`, [entry])
-		// Keep the live cache in the same complete shape that a later reload gets
-		// from the native rich-content sidecar.
-		addToCache({ ...entry, ...((entry as any).richContent ?? {}) } as any)
+		const result = await callNativeMethod(`${ID}.captureDeleted`, [entry])
+		// Native answers with the rich content it saved, each media object now carrying `localFile`.
+		// Without this the entry kept only CDN links until the next reload, and those die with the
+		// message.
+		if (typeof result === 'string' && result) {
+			try {
+				const saved = JSON.parse(result)
+				updateCachedMedia(String(entry.id), saved.attachments, saved.embeds)
+			} catch (error) {
+				console.error(`${TAG} saved media reply unreadable:`, error)
+			}
+		}
 		const cfg = settings()
 		if (cfg.autoBackupEnabled) scheduleBackup(cfg)
-		if (toast) {
-			revenge.discord.actions.ToastActionCreators.open({
-				key: `${ID}:${entry.id}`,
-				content: `Message deleted by ${authorName} in ${channelName}`,
-			})
-		}
+		if (toast) showToast(`Message deleted by ${authorName} in ${channelName}`, `${ID}:${entry.id}`)
 	} catch (error) {
 		console.error(`${TAG} capture bridge failed:`, error)
 	}
@@ -115,10 +125,10 @@ function plainUser(user: any): any | undefined {
 }
 
 /**
- * Deletions captured in the last few seconds, by message id. A single delete reaches `handle` twice:
- * from the dispatcher hook in `lib/visuals.ts` and from the MESSAGE_DELETE fallback subscriber
- * below. The second capture started a second download of the same media, and the two writes
- * damaged the saved file (native `downloadMedia` is now locked per file as well).
+ * Deletions captured in the last few seconds, by message id. Up to 0.6.x a single delete reached
+ * `handle` twice (a dispatcher hook and this file's subscriber), and the two downloads of the same
+ * media damaged the saved file. There is one path now, but a delete the gateway repeats still lands
+ * twice, so the guard stays (native `downloadMedia` is locked per file as well).
  */
 const recentCaptures = new Map<string, number>()
 const RECENT_CAPTURE_MS = 10_000
@@ -136,6 +146,8 @@ function handle(channelId: string, messageId: string) {
 	const s = stores()
 	const message = s.MessageStore?.getMessage?.(channelId, messageId)
 	if (!message) return
+	// A dismissed ephemeral message, not a deletion. See isEphemeral.
+	if (isEphemeral(message)) return
 
 	const cfg = settings()
 	if (!cfg.countOwnMessages) {
@@ -202,16 +214,31 @@ function handle(channelId: string, messageId: string) {
 }
 
 /**
+ * Whether a message being deleted stays on screen. Ephemeral messages are dismissed, not deleted;
+ * a SEND_FAILED or SENDING message being removed is the user's own retry or cancel.
+ */
+function shouldKeep(message: any, cfg: GhostLogSettings): boolean {
+	if (!message || cfg.deleteStyle === 'off') return false
+	if (message.state === 'SEND_FAILED' || message.state === 'SENDING') return false
+	if (isEphemeral(message)) return false
+	if (!cfg.countOwnMessages) {
+		const me = stores().UserStore?.getCurrentUser?.()?.id
+		if (me && message.author?.id === me) return false
+	}
+	if (cfg.ignoreBots && message.author?.bot) return false
+	return true
+}
+
+/**
  * One edit, caught from MESSAGE_UPDATE before the store applies it -- so the store still holds the
  * text as it was, which is the version worth keeping.
  *
  * Plenty of MESSAGE_UPDATEs are not edits: an embed unfurling, a reaction count, a pin. Those carry
- * no `content`, or the same content, and are skipped. So are this plugin's own converted deletes
- * (`__vml_deleted`), which reach here only if something else re-dispatches them.
+ * no `content`, or the same content, and are skipped. So are updates to a message already deleted.
  */
 function handleEdit(payload: any) {
 	const incoming = payload?.message
-	if (!incoming || incoming.__vml_deleted) return
+	if (!incoming) return
 	if (typeof incoming.content !== 'string') return
 	const channelId = String(incoming.channel_id ?? incoming.channelId ?? '')
 	const messageId = String(incoming.id ?? '')
@@ -222,7 +249,7 @@ function handleEdit(payload: any) {
 
 	const s = stores()
 	const message = s.MessageStore?.getMessage?.(channelId, messageId)
-	if (!message || message.__vml_deleted) return
+	if (!message || isDeletedMessage(message)) return
 	const before = String(message.content ?? '')
 	if (before === incoming.content) return
 
@@ -307,7 +334,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			console.error(`${TAG} failed to register settings pages:`, error)
 		}
 		try {
-			api.cleanup(setupChangelog(api, CHANGELOG))
+			api.cleanup(setupChangelog(api, CHANGELOG, { latestOnly: true }))
 		} catch (error) {
 			console.error(`${TAG} failed to set up the changelog:`, error)
 		}
@@ -320,19 +347,23 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			console.error(`${TAG} failed to guard deleted-message actions:`, error)
 		}
 
-		// The dispatcher hook inside patchVisuals provably sees every raw MESSAGE_DELETE (it
-		// converts them to MESSAGE_UPDATE), so single-delete capture is driven from that hook.
-		// The flux subscribers stay as a fallback (and are the only path for BULK deletes, which
-		// the visual patch intentionally doesn't convert).
+		// One place for a single delete: log it, then decide whether it stays on screen. Kept messages
+		// are held back by returning nothing, so no store ever removes them -- see lib/deleted.ts for
+		// why this replaced the fake MESSAGE_UPDATE. Anything that goes wrong lets the delete through:
+		// the worst case is Discord's normal behaviour.
 		const { onFluxEventDispatched } = revenge.discord.flux
 		api.cleanup(
 			onFluxEventDispatched('MESSAGE_DELETE', (payload: any) => {
 				try {
-					// __vml_cleanup deletes are emitted by this plugin's own stop-cleanup for
-					// messages already flagged/logged — re-capturing them would spam the log
-					// (and the bridge) with the entire flagged set on every reload.
-					if (payload?.__vml_cleanup) return payload
-					handle(payload.channelId, payload.id)
+					const channelId = String(payload?.channelId ?? payload?.channel_id ?? '')
+					const messageId = String(payload?.id ?? '')
+					if (!channelId || !messageId) return payload
+					handle(channelId, messageId)
+					const message = stores().MessageStore?.getMessage?.(channelId, messageId)
+					if (!shouldKeep(message, settings())) return payload
+					markKept(messageId)
+					redrawKept(channelId, messageId)
+					return undefined
 				} catch (error) {
 					console.error(`${TAG} MESSAGE_DELETE handler failed:`, error)
 				}
@@ -348,7 +379,6 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			}),
 			onFluxEventDispatched('MESSAGE_DELETE_BULK', (payload: any) => {
 				try {
-					if (payload?.__vml_cleanup) return payload
 					for (const id of payload.ids ?? []) handle(payload.channelId, id)
 				} catch (error) {
 					console.error(`${TAG} MESSAGE_DELETE_BULK handler failed:`, error)
@@ -370,7 +400,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 		const timer = setTimeout(() => {
 			if (cancelled) return
 			try {
-				api.cleanup(patchVisuals(settings, handle))
+				api.cleanup(patchVisuals(settings))
 			} catch (error) {
 				console.error(`${TAG} failed to start deferred visual patching:`, error)
 			}
@@ -402,10 +432,14 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 
 declare module '@revenge-mod/modules/native' {
 	export interface NativeMethods {
-		'bleelblep.ghost-log-native-beta.captureDeleted': [args: [entry: Record<string, unknown>], returnValue: boolean]
+		// The saved rich content as JSON when the entry had any, otherwise true; false on a bad call.
+		'bleelblep.ghost-log-native-beta.captureDeleted': [args: [entry: Record<string, unknown>], returnValue: string | boolean]
 		'bleelblep.ghost-log-native-beta.getLog': [args: any[], returnValue: string]
 		'bleelblep.ghost-log-native-beta.getRichContent': [args: [ids: string[]], returnValue: string]
 		'bleelblep.ghost-log-native-beta.getMedia': [args: [name: string], returnValue: string | null]
+		'bleelblep.ghost-log-native-beta.getMediaThumb': [args: [name: string], returnValue: string | null]
+		'bleelblep.ghost-log-native-beta.removeEntry': [args: [id: string], returnValue: boolean]
+		'bleelblep.ghost-log-native-beta.removeEdit': [args: [id: string], returnValue: boolean]
 		'bleelblep.ghost-log-native-beta.setBaseDir': [args: [backupPath: string], returnValue: boolean]
 		'bleelblep.ghost-log-native-beta.getLogCount': [args: any[], returnValue: number]
 		'bleelblep.ghost-log-native-beta.clearLog': [args: any[], returnValue: boolean]

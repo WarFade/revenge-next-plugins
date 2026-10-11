@@ -7,7 +7,8 @@
  * Each plugin keeps its entries in `js/changelog.ts`, calls `setupChangelog(api, CHANGELOG)` from
  * `start()`, and calls `useChangelog()` at the top of its root settings page. A root page that sets
  * its own `headerRight` renders `<ChangelogButton />` in it instead and calls
- * `useChangelog({ header: false })`.
+ * `useChangelog({ header: false })`. A plugin whose popup should show only the newest entry (not
+ * every version the user skipped) passes `{ latestOnly: true }` to `setupChangelog`.
  *
  * The last-seen version is kept in the plugin's own `jsonStorage` under `changelogSeenVersion`, so
  * a plugin needs `jsonStorage` (an empty default is enough). With nothing stored yet the plugin is
@@ -39,8 +40,14 @@ interface Registered {
 	current: string
 	entries: ChangelogEntry[]
 	storage: any
+	/** Popup shows only the newest unseen entry instead of everything since the last-seen one. */
+	latestOnly?: boolean
 	/** Versions newer than the last-seen one, waiting for the settings page to open. */
 	pending?: ChangelogEntry[]
+}
+
+interface ChangelogOptions {
+	latestOnly?: boolean
 }
 
 /** This bundle's plugin. Plain data, so module scope is fine. */
@@ -94,7 +101,7 @@ export function compareVersions(a: string, b: string): number {
  * Registers the Changelog page and works out whether there is anything new to show. Returns a
  * cleanup; pass it to `api.cleanup`.
  */
-export function setupChangelog(api: any, entries: ChangelogEntry[]): () => void {
+export function setupChangelog(api: any, entries: ChangelogEntry[], options: ChangelogOptions = {}): () => void {
 	const manifest = api.plugin.manifest
 	const plugin: Registered = {
 		id: manifest.id,
@@ -102,6 +109,7 @@ export function setupChangelog(api: any, entries: ChangelogEntry[]): () => void 
 		current: versionString(manifest.version),
 		entries: [...entries].sort((a, b) => compareVersions(b.version, a.version)),
 		storage: api.jsonStorage,
+		latestOnly: options.latestOnly,
 	}
 	registered = plugin
 
@@ -131,7 +139,7 @@ async function checkForUpdate(plugin: Registered) {
 	const fresh = plugin.entries.filter(
 		e => compareVersions(e.version, seen) > 0 && compareVersions(e.version, plugin.current) <= 0,
 	)
-	if (fresh.length) plugin.pending = fresh
+	if (fresh.length) plugin.pending = plugin.latestOnly ? fresh.slice(0, 1) : fresh
 	else await plugin.storage.set({ [SEEN_KEY]: plugin.current })
 }
 

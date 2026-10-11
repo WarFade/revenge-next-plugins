@@ -246,7 +246,9 @@ function installRenderRestore(ms: any, getSettings: () => GhostLogSettings): () 
 		return () => {}
 	}
 
-	let pendingChannel: any
+	// A stack, like visuals.ts's hooks: after() gets no arguments, and a getMessages called from inside
+	// another (a store reading a second channel) would otherwise hand the outer call the wrong channel.
+	const pendingChannels: any[] = []
 
 	// One memoized clone per channel. getMessages runs several times per frame and, before this,
 	// every one of those calls rebuilt the merged array AND allocated a fresh clone object -- pure
@@ -270,13 +272,14 @@ function installRenderRestore(ms: any, getSettings: () => GhostLogSettings): () 
 	const edgeId = (array: any[], index: number) => String(array[index]?.id ?? '')
 
 	const before = revenge.patcher.before(ms, 'getMessages', (args: any[]) => {
-		pendingChannel = args?.[0]
+		if (pendingChannels.length > 32) pendingChannels.splice(0, pendingChannels.length - 32)
+		pendingChannels.push(args?.[0])
 		return args
 	})
 
 	const after = revenge.patcher.after(ms, 'getMessages', (ret: any) => {
-		const channelId = pendingChannel != null ? String(pendingChannel) : undefined
-		pendingChannel = undefined
+		const pending = pendingChannels.pop()
+		const channelId = pending != null ? String(pending) : undefined
 		try {
 			if (!channelId || !ret?._array || !Array.isArray(ret._array)) return ret
 			if (typeof createMessageRecord !== 'function') return ret

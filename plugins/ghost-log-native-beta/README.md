@@ -29,6 +29,11 @@ Hybrid: JS captures, native stores, JS renders.
 
 - **Capture.** JS subscribes to `MESSAGE_DELETE` / `MESSAGE_DELETE_BULK`, reads the message before
   it leaves the store, and bridges it to native. Native encrypts (AES-GCM) and persists it.
+- **Keep.** A single `MESSAGE_DELETE` that should stay visible is blocked before any store sees it,
+  so the message never leaves `MessageStore`; its id is remembered and the row is redrawn with the
+  red styling. (Until 0.7.0 the delete was rewritten into a fake `MESSAGE_UPDATE`, which crashed the
+  app whenever the fake didn't match a real update closely enough.) Bulk deletes go through and are
+  brought back by Restore.
 - **Restore.** The chat list reads `MessageStore.getMessages(channelId)`. We hook it and merge our
   stored deletions back into the returned `ChannelMessages._array`, built as real `MessageRecord`
   instances through Discord's own `createMessageRecord` and slotted in by timestamp. Because the

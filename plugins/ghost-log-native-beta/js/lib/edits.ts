@@ -128,6 +128,18 @@ export function captureEdit(edit: EditCapture) {
 		.catch(error => console.error(`${TAG} captureEdit failed:`, error))
 }
 
+/** Takes one message's edit history out of the log, here and in native. */
+export async function removeEditRecord(messageId: string): Promise<void> {
+	try {
+		await callNativeMethod(`${ID}.removeEdit`, [messageId])
+	} catch (error) {
+		console.error(`${TAG} removeEdit failed:`, error)
+	}
+	byId.delete(messageId)
+	rebuildOrder()
+	notify()
+}
+
 export async function clearEdits(): Promise<void> {
 	try {
 		await callNativeMethod(`${ID}.clearEdits`, [])
