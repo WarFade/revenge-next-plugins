@@ -1,5 +1,10 @@
 import { DEFAULTS } from '../defaults'
 import type { AiHandle, VeilStorage } from '../types'
+import { showToast } from '../../../../shared/toast'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export const TAG = '[Veil]'
 
@@ -26,7 +31,7 @@ export function patch(value: Partial<VeilStorage>) {
 	try {
 		storage?.set(value)
 	} catch (error) {
-		console.error(`${TAG} failed to write storage:`, error)
+		reportError(`${TAG} failed to write storage:`, error)
 	}
 }
 
@@ -50,12 +55,12 @@ export function getAi(): AiHandle | undefined {
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({ key: 'VeilToast', content })
+		showToast(content, 'VeilToast')
 	} catch {
 		/* a missing toast is never worth a crash */
 	}
@@ -63,7 +68,7 @@ export function toast(content: string) {
 
 export function currentUserId(): string | undefined {
 	try {
-		return (revenge.discord.flux.Stores as any)?.UserStore?.getCurrentUser?.()?.id
+		return (Stores as any)?.UserStore?.getCurrentUser?.()?.id
 	} catch {
 		return undefined
 	}
@@ -71,7 +76,7 @@ export function currentUserId(): string | undefined {
 
 export function channelName(id: string): string {
 	try {
-		const channel = (revenge.discord.flux.Stores as any)?.ChannelStore?.getChannel?.(id)
+		const channel = (Stores as any)?.ChannelStore?.getChannel?.(id)
 		return channel?.name ? `#${channel.name}` : id
 	} catch {
 		return id
@@ -80,7 +85,7 @@ export function channelName(id: string): string {
 
 export function userName(id: string): string {
 	try {
-		const user = (revenge.discord.flux.Stores as any)?.UserStore?.getUser?.(id)
+		const user = (Stores as any)?.UserStore?.getUser?.(id)
 		return user?.globalName || user?.username || id
 	} catch {
 		return id

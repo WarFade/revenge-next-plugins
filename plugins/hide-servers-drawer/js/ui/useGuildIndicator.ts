@@ -1,4 +1,6 @@
 import { guildNotificationState, settingsStore } from "../lib/notifications"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as react from "@revenge-mod/react"
 
 export interface GuildIndicatorState {
 	/** Mention count after notification-setting suppression -- 0 means no mention pill. */
@@ -16,8 +18,8 @@ export interface GuildIndicatorState {
 export function useGuildIndicator(guildId: string): GuildIndicatorState {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1. Flux stores
 	// come from the Stores proxy by name; there is no `withStoreName` filter.
-	const { React } = revenge.react
-	const { GuildReadStateStore } = revenge.discord.flux.Stores as any
+	const { React } = react
+	const { GuildReadStateStore } = Stores as any
 
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 

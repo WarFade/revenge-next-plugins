@@ -1,5 +1,9 @@
 import { DEFAULTS } from '../defaults'
 import type { AiHandle, SecondThoughtsStorage } from '../types'
+import { showToast } from '../../../../shared/toast'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export const TAG = '[SecondThoughts]'
 
@@ -28,20 +32,17 @@ export function patch(value: Partial<SecondThoughtsStorage>) {
 	try {
 		storage?.set(value)
 	} catch (error) {
-		console.error(`${TAG} failed to write storage:`, error)
+		reportError(`${TAG} failed to write storage:`, error)
 	}
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({
-			key: 'SecondThoughtsToast',
-			content,
-		})
+		showToast(content, 'SecondThoughtsToast')
 	} catch {
 		/* a missing toast must never turn a check into a crash */
 	}

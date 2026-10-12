@@ -16,12 +16,16 @@ import {
 import { dangerIcon, rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { AiCoreStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /** The cap, and where the day's calls went. */
 export default function Usage() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
+	const { Page } = components
+	const { ScrollView } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -30,9 +34,7 @@ export default function Usage() {
 		TableSwitchRow,
 		TextInput,
 		Slider,
-		Card,
-	} = revenge.discord.design.Design
-	const React = revenge.react.React
+	} = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }
@@ -72,18 +74,10 @@ export default function Usage() {
 						/>
 					</TableRowGroup>
 
-					{/*
-					 * A slider is a custom control, so it lives in a Card rather than pretending
-					 * to be a row (docs/plugin-design-language.md §3.2).
-					 */}
+					{/* A slider sits in a row, like a text field (docs/plugin-design-language.md §3.6). */}
 					{vault.unlimited ? null : (
-						<Card variant="secondary" border="none">
-							<View
-								style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
-							>
-								<Text color="text-default" variant="text-md/semibold">
-									{`Daily cap — ${shownCap} call${shownCap === 1 ? '' : 's'}`}
-								</Text>
+						<TableRowGroup>
+							<FieldRow label={`Daily cap — ${shownCap} call${shownCap === 1 ? '' : 's'}`}>
 								<Text color="text-muted" variant="text-sm/normal">
 									A hard ceiling shared by every plugin that uses this one. At
 									zero nothing can call out at all, which is the quickest way to
@@ -103,8 +97,8 @@ export default function Usage() {
 										setDraftCap(null)
 									}}
 								/>
-							</View>
-						</Card>
+							</FieldRow>
+						</TableRowGroup>
 					)}
 
 					<TableRowGroup title="Today" hasIcons>

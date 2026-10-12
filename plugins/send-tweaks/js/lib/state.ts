@@ -1,5 +1,9 @@
 import { DEFAULTS } from '../defaults'
 import type { AiHandle, SendTweaksStorage } from '../types'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export const TAG = '[SendTweaks]'
 
@@ -22,7 +26,7 @@ export function requireReload() {
 	try {
 		reload?.()
 	} catch (error) {
-		console.error(`${TAG} could not ask for a reload:`, error)
+		reportError(`${TAG} could not ask for a reload:`, error)
 	}
 }
 
@@ -59,7 +63,6 @@ export function settings(): SendTweaksStorage {
  * made elsewhere always redraws the page.
  */
 export function useSettings(): SendTweaksStorage {
-	const React = revenge.react.React
 	const [, redraw] = React.useReducer((n: number) => n + 1, 0)
 	const handle = storage
 	const value = handle?.use()
@@ -74,5 +77,5 @@ export function useSettings(): SendTweaksStorage {
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }

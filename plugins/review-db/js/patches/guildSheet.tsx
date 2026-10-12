@@ -11,6 +11,15 @@
 import { TAG } from '../lib/discord'
 import { ReviewType } from '../lib/entities'
 import { openReviews } from '../ui/routes'
+import { getAssetIdByName } from '@revenge-mod/assets'
+import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
+import * as modulesFinders from '@revenge-mod/discord/utils/modules/finders'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const PATH = 'modules/guild_action_sheet/native/components/GuildActionSheetActions.tsx'
 const TARGET = 'GuildActionSheetSecondaryActions'
@@ -18,8 +27,8 @@ const TARGET = 'GuildActionSheetSecondaryActions'
 let actionSheetRow: any
 function ActionSheetRowComponent() {
 	if (!actionSheetRow) {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetRow = lookupModule<any>(withProps('ActionSheetRow'))?.[0]?.ActionSheetRow
 	}
 	return actionSheetRow
@@ -27,7 +36,7 @@ function ActionSheetRowComponent() {
 
 function hideActionSheet() {
 	try {
-		revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+		ActionSheetActionCreators.hideActionSheet()
 	} catch {
 		/* the sheet stays open; harmless */
 	}
@@ -40,7 +49,7 @@ function ServerReviewsGroup({ guild }: { guild: { id: string; name: string } }) 
 		<ActionSheetRow.Group>
 			<ActionSheetRow
 				label="Server Reviews"
-				icon={<ActionSheetRow.Icon source={revenge.assets.getAssetIdByName('StarIcon')} />}
+				icon={<ActionSheetRow.Icon source={getAssetIdByName('StarIcon')} />}
 				onPress={() => {
 					hideActionSheet()
 					openReviews(guild.id, guild.name, ReviewType.Server)
@@ -58,15 +67,15 @@ export default function patchGuildSheet(): () => void {
 	const apply = (mod: any) => {
 		try {
 			if (typeof mod?.[TARGET] !== 'function') {
-				console.error(`${TAG} ${TARGET} not found on ${PATH}; the server sheet row is off.`)
+				reportError(`${TAG} ${TARGET} not found on ${PATH}; the server sheet row is off.`)
 				return
 			}
 			patches.push(
-				revenge.patcher.before(mod, TARGET, (args: any[]) => {
+				before(mod, TARGET, (args: any[]) => {
 					lastProps = args?.[0]
 					return args
 				}),
-				revenge.patcher.after(mod, TARGET, (ret: any) => {
+				after(mod, TARGET, (ret: any) => {
 					const guild = lastProps?.guild
 					lastProps = undefined
 					if (typeof guild?.id !== 'string') return ret
@@ -78,16 +87,16 @@ export default function patchGuildSheet(): () => void {
 					)
 				}),
 			)
-			console.log(`${TAG} hooked ${TARGET}`)
+			if (DEBUG) console.log(`${TAG} hooked ${TARGET}`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook the server sheet:`, error)
+			reportError(`${TAG} failed to hook the server sheet:`, error)
 		}
 	}
 
 	try {
-		unsubscribe = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(PATH, apply)
+		unsubscribe = (modulesFinders as any).getModuleWithImportedPath(PATH, apply)
 	} catch (error) {
-		console.error(`${TAG} server sheet lookup failed:`, error)
+		reportError(`${TAG} server sheet lookup failed:`, error)
 	}
 
 	return () => {

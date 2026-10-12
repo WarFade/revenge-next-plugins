@@ -69,6 +69,11 @@ export interface SendTweaksStorage {
 	/** Rules applied only inside links. Stored whole, like `rules`. */
 	linkRules: Rule[]
 	/**
+	 * Run text and link rules on each word as you finish typing it, in the message box, instead of
+	 * only on send. See lib/liveReplace.ts. Optional: older storage has no value, which reads as off.
+	 */
+	liveReplace?: boolean
+	/**
 	 * Send every new message as Discord's @silent: it arrives, but nobody gets a push or desktop
 	 * notification for it. Edits are never affected -- a message's flags are fixed once sent.
 	 */

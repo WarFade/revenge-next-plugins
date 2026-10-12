@@ -37,6 +37,13 @@
  * EPHEMERAL, which makes Discord render its own "Only you can see this" notice.
  */
 
+import * as modulesFinders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as discordFinders from '@revenge-mod/discord/utils/modules/finders'
+import { reportError } from './report'
+
+const DEBUG: boolean = false
+
 export enum OptionType {
 	String = 3,
 	Integer = 4,
@@ -217,7 +224,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 		registry = array as any[]
 		status.found = true
 		status.via = via
-		console.log(
+		if (DEBUG) console.log(
 			`${tag} command registry found via ${via} (${registry.length} built-ins)`,
 		)
 
@@ -226,7 +233,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 			const stale = registry.findIndex(command => command?.id === id)
 			if (stale !== -1) registry.splice(stale, 1)
 			registry.push(entry)
-			console.log(`${tag} registered /${entry.name}`)
+			if (DEBUG) console.log(`${tag} registered /${entry.name}`)
 		}
 		queued.clear()
 		stopWatching()
@@ -241,8 +248,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 		// throws rather than returning undefined, so try both and let either answer.
 		try {
 			const finders =
-				(revenge.discord.utils as any)?.modules?.finders ??
-				(revenge.discord.utils as any)?.finders
+				(discordFinders as any)
 			if (typeof finders?.getModuleWithImportedPath === 'function') {
 				const unsub = finders.getModuleWithImportedPath(
 					BUILT_INS_PATH,
@@ -252,20 +258,20 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 				)
 				if (typeof unsub === 'function') teardown.push(unsub)
 			} else {
-				console.log(
+				if (DEBUG) console.log(
 					`${tag} no getModuleWithImportedPath on this build; falling back to props`,
 				)
 			}
 		} catch (error) {
-			console.error(`${tag} imported-path lookup threw:`, error)
+			reportError(`${tag} imported-path lookup threw:`, error)
 		}
 		// The callback can fire synchronously, before its unsubscribe was pushed; drop it now.
 		if (registry) return stopWatching()
 
 		// Route 2: by shape, as a standing subscription rather than a one-shot look.
 		try {
-			const { lookupModules, waitForModules } = revenge.modules.finders
-			const { withProps } = revenge.modules.finders.filters
+			const { lookupModules, waitForModules } = modulesFinders
+			const { withProps } = filters
 			const filter = withProps('BUILT_IN_COMMANDS')
 
 			for (const [exports] of lookupModules(filter)) {
@@ -277,7 +283,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 			})
 			teardown.push(() => unsub?.())
 		} catch (error) {
-			console.error(`${tag} props lookup threw:`, error)
+			reportError(`${tag} props lookup threw:`, error)
 		}
 	}
 
@@ -295,7 +301,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 			const stale = registry.findIndex(command => command?.id === id)
 			if (stale !== -1) registry.splice(stale, 1)
 			registry.push(entry)
-			console.log(`${tag} registered /${definition.name}`)
+			if (DEBUG) console.log(`${tag} registered /${definition.name}`)
 		} else {
 			queued.set(id, entry)
 			watchForRegistry()
@@ -337,26 +343,26 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 		receiverResolved = true
 
 		try {
-			const { lookupModule } = revenge.modules.finders
-			const { withProps } = revenge.modules.finders.filters
+			const { lookupModule } = modulesFinders
+			const { withProps } = filters
 			const [mod, id] = lookupModule(
 				withProps('receiveMessage', 'sendMessage'),
 			) as [any, number | undefined]
 			if (id === undefined) {
-				console.error(`${tag} no receiveMessage module found`)
+				reportError(`${tag} no receiveMessage module found`)
 				return undefined
 			}
 			// The export is usually on `default`, not on the namespace -- porting rule 3.
 			const host =
 				typeof mod?.receiveMessage === 'function' ? mod : mod?.default
 			if (typeof host?.receiveMessage !== 'function') {
-				console.error(`${tag} module ${id} has no callable receiveMessage`)
+				reportError(`${tag} module ${id} has no callable receiveMessage`)
 				return undefined
 			}
 			receiver = host
-			console.log(`${tag} clientside messages will use module ${id}`)
+			if (DEBUG) console.log(`${tag} clientside messages will use module ${id}`)
 		} catch (error) {
-			console.error(`${tag} receiveMessage lookup threw:`, error)
+			reportError(`${tag} receiveMessage lookup threw:`, error)
 		}
 
 		return receiver
@@ -401,7 +407,7 @@ export function createCommands(owner: string, avatar: DefaultAvatar = 0) {
 			})
 			return true
 		} catch (error) {
-			console.error(`${tag} could not show the clientside message:`, error)
+			reportError(`${tag} could not show the clientside message:`, error)
 			return false
 		}
 	}

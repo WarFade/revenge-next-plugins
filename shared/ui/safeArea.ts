@@ -1,3 +1,5 @@
+import * as ReactNativeSafeAreaContext from '@revenge-mod/externals/react-native-safe-area-context'
+
 /**
  * Bottom padding for a scrollable settings page, so the system gesture bar doesn't cover the
  * last card. Shared by every plugin's `js/ui/safeArea.ts`. `react-native-safe-area-context` is a
@@ -9,7 +11,7 @@
  */
 export function useBottomPadding(base = 16): number {
 	try {
-		const mod = revenge.externals.ReactNativeSafeAreaContext as any
+		const mod = ReactNativeSafeAreaContext as any
 		const insets = mod?.useSafeAreaInsets?.()
 		if (typeof insets?.bottom === 'number') return insets.bottom + base
 	} catch {

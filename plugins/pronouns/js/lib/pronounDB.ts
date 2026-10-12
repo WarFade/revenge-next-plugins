@@ -1,3 +1,5 @@
+import { reportError } from '../../../../shared/report'
+
 /**
  * PronounDB (pronoundb.org), the crowdsourced fallback for people whose Discord profile has no
  * pronouns. https://pronoundb.org/wiki/api-docs
@@ -80,7 +82,7 @@ async function fetchBatch(ids: string[]): Promise<Record<string, { sets?: Record
 		if (!response.ok) return undefined
 		return await response.json()
 	} catch (error) {
-		console.error(`${TAG} PronounDB request failed:`, error)
+		reportError(`${TAG} PronounDB request failed:`, error)
 		return undefined
 	} finally {
 		clearTimeout(timeout)

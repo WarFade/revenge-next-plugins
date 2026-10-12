@@ -6,6 +6,11 @@ import DmIcon from "./DmIcon"
 import FolderRow from "./FolderRow"
 import GuildRow, { useSelectedGuildId } from "./GuildRow"
 import UnreadDmRow from "./UnreadDmRow"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModules } from "@revenge-mod/modules/finders"
+import { withProps } from "@revenge-mod/modules/finders/filters"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 
 // getModules, not lookupModule: confirmed on-device (staff-tags plugin) that a lazily-loaded
@@ -16,20 +21,20 @@ import UnreadDmRow from "./UnreadDmRow"
 let channelActions: any
 let routes: any
 let safeArea: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("selectPrivateChannel"), (mod: any) => {
+getModules(withProps("selectPrivateChannel"), (mod: any) => {
 	channelActions = mod
 })
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("ME"), (mod: any) => {
+getModules(withProps("ME"), (mod: any) => {
 	routes = mod
 })
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("useSafeAreaInsets"), (mod: any) => {
+getModules(withProps("useSafeAreaInsets"), (mod: any) => {
 	safeArea = mod
 })
 
 // Flux stores are looked up by name directly through the Stores proxy, not a module finder
 // filter -- there is no `withStoreName` under modules.finders.filters. Read per call, never at
 // module scope -- see docs/porting-rules.md rule 1.
-const selectedChannelStore = (): any => (revenge.discord.flux.Stores as any).SelectedChannelStore
+const selectedChannelStore = (): any => (Stores as any).SelectedChannelStore
 
 // Discord's own bottom tab bar ("You"/home/etc) is a separate fixed-height UI element, not
 // part of the safe-area inset -- the inset only covers the gesture-nav pill below it. This
@@ -41,7 +46,7 @@ const TAB_BAR_HEIGHT = 140
 // DM button renders flush against the status bar instead of below it. Android needs
 // StatusBar.currentHeight added explicitly; iOS's real inset is handled by useBottomSafeInset.
 function topInset(): number {
-	const { StatusBar, Platform } = revenge.react.ReactNative
+	const { StatusBar, Platform } = ReactNative
 	if (Platform.OS === "android") return StatusBar?.currentHeight ?? 24
 	return 0
 }
@@ -61,7 +66,7 @@ function useBottomSafeInset(): number {
 
 function useSelectedChannelId(): string | null {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
+	const { React } = react
 	const SelectedChannelStore = selectedChannelStore()
 
 	const [id, setId] = React.useState<string | null>(() => {
@@ -111,8 +116,8 @@ function openDms() {
  */
 export default function CustomGuildsBar() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { ScrollView, View } = revenge.react.ReactNative
+	const { React } = react
+	const { ScrollView, View } = ReactNative
 
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 

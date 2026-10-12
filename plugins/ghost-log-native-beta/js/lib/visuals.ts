@@ -2,9 +2,15 @@ import { setCreateMessageRecord } from './restore'
 import { getEditRecord } from './edits'
 import { isDeletedMessage, watchChannelMessages } from './deleted'
 import type { GhostLogSettings } from '../types'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 function stores() {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 /**
@@ -18,7 +24,7 @@ function guarded<A extends any[]>(label: string, fn: (...args: A) => void) {
 		try {
 			fn(...args)
 		} catch (error) {
-			console.error(`[GhostLogNativeBeta] ${label} failed; feature disabled for this session:`, error)
+			reportError(`[GhostLogNativeBeta] ${label} failed; feature disabled for this session:`, error)
 		}
 	}
 }
@@ -73,8 +79,8 @@ function applyEditHistory(ret: any, message: any, settings: GhostLogSettings) {
 }
 
 function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => void)[]) {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	// `max` defaults to 1, and the count is spent even when the callback bails out early -- so the
 	// plain call patched only the FIRST RowManager and stopped. There is more than one RowManager
@@ -87,7 +93,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 		withName('RowManager'),
 		guarded('RowManager patch', (RowManager: any) => {
 			if (!RowManager?.prototype?.generate) {
-				console.error('[GhostLogNativeBeta] RowManager.prototype.generate not found')
+				reportError('[GhostLogNativeBeta] RowManager.prototype.generate not found')
 				return
 			}
 			if (seenRowManagers.has(RowManager.prototype)) return
@@ -99,7 +105,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 			const pendingRows: any[] = []
 
 			patches.push(
-				revenge.patcher.before(RowManager.prototype, 'generate', (args: any[]) => {
+				before(RowManager.prototype, 'generate', (args: any[]) => {
 					// A throwing original skips after() and leaves its entry behind. LIFO still pairs the
 					// next call correctly; the cap only stops leftovers piling up.
 					if (pendingRows.length > 32) pendingRows.splice(0, pendingRows.length - 32)
@@ -109,7 +115,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 			)
 
 			patches.push(
-				revenge.patcher.after(RowManager.prototype, 'generate', (ret: any) => {
+				after(RowManager.prototype, 'generate', (ret: any) => {
 					const data = pendingRows.pop()
 
 					try {
@@ -119,7 +125,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 						try {
 							applyEditHistory(ret, data.message, settings)
 						} catch (error) {
-							console.error('[GhostLogNativeBeta] edit history row failed:', error)
+							reportError('[GhostLogNativeBeta] edit history row failed:', error)
 						}
 
 						if (settings.deleteStyle === 'off' || !isDeletedMessage(data?.message)) return ret
@@ -128,7 +134,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 							ret.message = ret.message ?? {}
 							ret.message.edited = 'deleted'
 							ret.backgroundHighlight = ret.backgroundHighlight ?? {}
-							const { processColor } = revenge.react.ReactNative
+							const { processColor } = ReactNative
 							if (processColor) {
 								ret.backgroundHighlight.backgroundColor = processColor('#da373c22')
 								ret.backgroundHighlight.gutterColor = processColor('#da373cff')
@@ -141,7 +147,7 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
 							}
 						}
 					} catch (error) {
-						console.error('[GhostLogNativeBeta] RowManager hook failed:', error)
+						reportError('[GhostLogNativeBeta] RowManager hook failed:', error)
 					}
 
 					return ret
@@ -163,8 +169,8 @@ function patchRowManager(getSettings: () => GhostLogSettings, patches: (() => vo
  * fake update to carry it through, and two hooks on the hottest path in the chat are gone.
  */
 function findMessageRecordBuilder() {
-	const { getModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withProps } = filters
 	let found = false
 	const unsub = getModules(
 		withProps('createMessageRecord', 'updateMessageRecord'),
@@ -211,7 +217,7 @@ export function patchVisuals(getSettings: () => GhostLogSettings): () => void {
 		try {
 			unsubs.push(install())
 		} catch (error) {
-			console.error('[GhostLogNativeBeta] visual patch failed to install:', error)
+			reportError('[GhostLogNativeBeta] visual patch failed to install:', error)
 		}
 	}
 

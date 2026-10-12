@@ -4,14 +4,18 @@ import { selectedTagId } from '../../lib/selection'
 import { getStorage, overrideFor, setOverride } from '../../lib/state'
 import { useBottomPadding } from '../safeArea'
 import TagIcon from '../TagIcon'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** One row per icon, each drawn in the tag's own colour so the choice is the preview. */
 export default function IconPicker() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { goBack: () => void }
 	getStorage()?.use()

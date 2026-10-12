@@ -1,5 +1,8 @@
 import { listInstalled } from './installed'
 import type { Entry } from '../types'
+import * as modulesNative from '@revenge-mod/modules/native'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
 
 /**
  * Which plugin ids are installed, for spotting hub entries whose plugin is gone (uninstalled, or
@@ -16,7 +19,7 @@ const listeners = new Set<() => void>()
 
 export function refreshInstalledIds(): void {
 	try {
-		const native = (revenge.modules.native as any).callNativeMethod
+		const native = (modulesNative as any).callNativeMethod
 		Promise.resolve(native('revenge.plugins.list', []))
 			.then((list: unknown) => {
 				if (!Array.isArray(list)) return
@@ -28,10 +31,10 @@ export function refreshInstalledIds(): void {
 				for (const listener of listeners) listener()
 			})
 			.catch((error: unknown) =>
-				console.error('[PluginHub] could not list installed plugins:', error),
+				reportError('[PluginHub] could not list installed plugins:', error),
 			)
 	} catch (error) {
-		console.error('[PluginHub] could not list installed plugins:', error)
+		reportError('[PluginHub] could not list installed plugins:', error)
 	}
 }
 
@@ -44,7 +47,6 @@ export function installedIds(): Set<string> | undefined {
 
 /** Installed ids as a hook: re-renders when the native list arrives. Refreshes on mount. */
 export function useInstalledIds(): Set<string> | undefined {
-	const React = revenge.react.React
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => {
 		listeners.add(bump)

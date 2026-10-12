@@ -1,4 +1,5 @@
 import type { StaffTagsStorage, TagOverride } from '../types'
+import { reportError } from '../../../../shared/report'
 
 export const TAG = '[StaffTags]'
 
@@ -32,7 +33,7 @@ export function setOverride(id: string, patch: Partial<TagOverride>) {
 	try {
 		storage?.set({ tags: { [id]: patch } } as Partial<StaffTagsStorage>)
 	} catch (error) {
-		console.error(`${TAG} could not save tag settings:`, error)
+		reportError(`${TAG} could not save tag settings:`, error)
 	}
 }
 

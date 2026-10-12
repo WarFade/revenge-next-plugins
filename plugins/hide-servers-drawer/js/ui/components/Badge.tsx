@@ -1,5 +1,6 @@
 import { useGuildIndicator } from "../useGuildIndicator"
 import { barBackground, mentionBadge, unreadDot } from "../theme"
+import * as ReactNative from "react-native"
 
 /**
  * Mention-count pill, or a plain unread dot when there are no mentions -- but only ever what
@@ -8,7 +9,7 @@ import { barBackground, mentionBadge, unreadDot } from "../theme"
  */
 export default function Badge({ guildId }: { guildId: string }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { View, Text } = revenge.react.ReactNative
+	const { View, Text } = ReactNative
 
 	const { mentionCount, showDot } = useGuildIndicator(guildId)
 

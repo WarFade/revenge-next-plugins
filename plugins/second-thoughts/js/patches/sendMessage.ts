@@ -36,6 +36,11 @@ import { judgeLocally, judgeRemotely } from '../lib/judge'
 import { debug, recordSend, snooze, TAG, toast } from '../lib/state'
 import { openHoldAlert } from '../ui/components/HoldAlert'
 import type { Verdict } from '../types'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const HOUR = 60 * 60 * 1000
 
@@ -51,8 +56,8 @@ export default function patchSendMessage(): () => void {
 	let installed = false
 	let stopped = false
 
-	const { lookupModules, waitForModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModules, waitForModules } = finders
+	const { withProps } = filters
 
 	// Narrow enough to land on the message action creators and nothing else.
 	const filter = withProps('sendMessage', 'editMessage', 'startEditMessage')
@@ -72,14 +77,14 @@ export default function patchSendMessage(): () => void {
 		status.installed = true
 		status.moduleId = id
 		// Log the outcome, not the attempt -- porting rule 3.
-		console.log(`${TAG} guarding sendMessage on module ${id}`)
+		if (DEBUG) console.log(`${TAG} guarding sendMessage on module ${id}`)
 	}
 
 	try {
 		for (const [exports, id] of lookupModules(filter))
 			install(exports, id as number)
 	} catch (error) {
-		console.error(`${TAG} sendMessage lookup failed:`, error)
+		reportError(`${TAG} sendMessage lookup failed:`, error)
 	}
 
 	if (!installed) {
@@ -97,7 +102,7 @@ export default function patchSendMessage(): () => void {
 			})
 			cleanups.push(() => unsub?.())
 		} catch (error) {
-			console.error(`${TAG} could not subscribe for sendMessage:`, error)
+			reportError(`${TAG} could not subscribe for sendMessage:`, error)
 		}
 	}
 
@@ -109,7 +114,7 @@ export default function patchSendMessage(): () => void {
 			try {
 				cleanup()
 			} catch (error) {
-				console.error(`${TAG} cleanup failed:`, error)
+				reportError(`${TAG} cleanup failed:`, error)
 			}
 		}
 	}
@@ -130,13 +135,13 @@ function wrapSendMessage(host: any): (() => void) | undefined {
 		} catch (error) {
 			// The guard handles its own failures and sends; reaching here means something threw
 			// before it could. Fail open, as everywhere else: the check must never cost a message.
-			console.error(`${TAG} guard threw; sending anyway:`, error)
+			reportError(`${TAG} guard threw; sending anyway:`, error)
 			return Reflect.apply(original, this, args)
 		}
 	}
 	host.sendMessage = wrapper
 	if (host.sendMessage !== wrapper) {
-		console.error(`${TAG} could not wrap sendMessage`)
+		reportError(`${TAG} could not wrap sendMessage`)
 		return undefined
 	}
 	return () => {
@@ -162,7 +167,7 @@ function guard(this: any, args: any[], original: any) {
 	 */
 	const sendLater = () => {
 		const failed = (error: unknown) => {
-			console.error(`${TAG} sending after the check failed:`, error)
+			reportError(`${TAG} sending after the check failed:`, error)
 			restoreDraft(channelId, content)
 			toast("Couldn't send that. It's back in the message box.")
 		}
@@ -187,7 +192,7 @@ function guard(this: any, args: any[], original: any) {
 		outcome = judgeLocally(content, channelId)
 	} catch (error) {
 		// The guard failing must never cost the user a message.
-		console.error(`${TAG} local check threw; sending anyway:`, error)
+		reportError(`${TAG} local check threw; sending anyway:`, error)
 		return send()
 	}
 
@@ -221,7 +226,7 @@ function guard(this: any, args: any[], original: any) {
 			// judgeRemotely swallows its own failures, so this is a bug in our own code rather
 			// than a network problem. Still fail open.
 			clearTimeout(announce)
-			console.error(`${TAG} remote check threw; sending anyway:`, error)
+			reportError(`${TAG} remote check threw; sending anyway:`, error)
 			sendLater()
 		})
 

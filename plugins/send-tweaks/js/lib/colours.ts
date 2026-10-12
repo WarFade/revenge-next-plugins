@@ -7,9 +7,12 @@
  * cached, so a theme switch needs no reload.
  */
 
+import { Stores } from '@revenge-mod/discord/flux'
+import * as commonTokens from '@revenge-mod/discord/common/tokens'
+
 function tables(): any {
 	try {
-		return (revenge.discord.common as any).tokens?.Tokens
+		return (commonTokens as any)?.Tokens
 	} catch {
 		return undefined
 	}
@@ -17,7 +20,7 @@ function tables(): any {
 
 function currentTheme(): string | undefined {
 	try {
-		const store = (revenge.discord.flux.Stores as any).ThemeStore
+		const store = (Stores as any).ThemeStore
 		const theme = store?.theme ?? store?.getTheme?.()
 		return typeof theme === 'string' ? theme : undefined
 	} catch {

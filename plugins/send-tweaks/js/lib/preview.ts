@@ -38,6 +38,12 @@ import { aiReady, allStyles, armRestyle, type Restyled, restyle, type Style } fr
  */
 
 import { showToast } from './toast'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 const ALERT_KEY = 'SendTweaksPreview'
 const PICKER_KEY = 'SendTweaksRestyle'
@@ -68,16 +74,15 @@ function avatarUrl(me: any): string | undefined {
 
 /** The message as it would appear: who it's from, then the formatted text, scrollable. */
 function previewMessage(content: string, warnings: string[] = []): any {
-	const React = revenge.react.React
-	const { Image, ScrollView, View, Dimensions } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
-	const me = (revenge.discord.flux.Stores as any).UserStore?.getCurrentUser?.()
+	const { Image, ScrollView, View, Dimensions } = ReactNative
+	const { Text } = Design as any
+	const me = (Stores as any).UserStore?.getCurrentUser?.()
 
 	let body: any
 	try {
 		body = renderMarkdown(content)
 	} catch (error) {
-		console.error(`${TAG} preview: markdown failed, showing the text as typed:`, error)
+		reportError(`${TAG} preview: markdown failed, showing the text as typed:`, error)
 		body = React.createElement(Text, { variant: 'text-md/normal', color: 'text-default', selectable: true }, content)
 	}
 
@@ -145,9 +150,8 @@ export function showPreview(
 	} else if (styled && content.length > LIMIT) {
 		warnings.push(`The restyled message has ${content.length} characters, over Discord's usual ${LIMIT}. Try Shorter, or a different style.`)
 	}
-	const { AlertModal, AlertActionButton } = revenge.discord.design.Design as any
-	const alerts = revenge.discord.actions.AlertActionCreators
-	const React = revenge.react.React
+	const { AlertModal, AlertActionButton } = Design as any
+	const alerts = AlertActionCreators
 	const close = () => alerts.dismissAlert(ALERT_KEY)
 
 	try {
@@ -188,7 +192,7 @@ export function showPreview(
 		)
 		return true
 	} catch (error) {
-		console.error(`${TAG} preview failed:`, error)
+		reportError(`${TAG} preview failed:`, error)
 		toast("Couldn't show a preview here")
 		return false
 	}
@@ -219,7 +223,7 @@ async function applyStyle(draft: string, send: (() => void) | undefined, style: 
 		}
 		showPreview(draft, send, { result, style })
 	} catch (error) {
-		console.error(`${TAG} restyle failed:`, error)
+		reportError(`${TAG} restyle failed:`, error)
 		toast("Couldn't restyle that message")
 	} finally {
 		busy = false
@@ -231,10 +235,9 @@ async function applyStyle(draft: string, send: (() => void) | undefined, style: 
  * to the message as typed.
  */
 export function showStylePicker(draft: string, send: (() => void) | undefined, restyled = false) {
-	const React = revenge.react.React
-	const { ScrollView, Dimensions } = revenge.react.ReactNative
-	const { AlertModal, AlertActionButton, TableRowGroup, TableRow } = revenge.discord.design.Design as any
-	const alerts = revenge.discord.actions.AlertActionCreators
+	const { ScrollView, Dimensions } = ReactNative
+	const { AlertModal, AlertActionButton, TableRowGroup, TableRow } = Design as any
+	const alerts = AlertActionCreators
 	const close = () => alerts.dismissAlert(PICKER_KEY)
 	const styles = usableStyles()
 	const ai = aiReady()
@@ -294,7 +297,7 @@ export function showStylePicker(draft: string, send: (() => void) | undefined, r
 			}),
 		)
 	} catch (error) {
-		console.error(`${TAG} style picker failed:`, error)
+		reportError(`${TAG} style picker failed:`, error)
 		toast("Couldn't show the styles here")
 	}
 }

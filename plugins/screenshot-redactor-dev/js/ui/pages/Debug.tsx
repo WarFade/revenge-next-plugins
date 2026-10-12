@@ -5,10 +5,15 @@ import { mirroredRowCount, mirroredTagCount, refreshChat } from "../../lib/chatR
 import { probeNameModules } from "../../lib/probe"
 import { rowIcon } from "../icon"
 import { useBottomPadding } from "../safeArea"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../../shared/report"
 
 // Read inside the component, never at module scope -- see docs/porting-rules.md rule 1.
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "ScreenshotRedactorToast", content })
+	sharedToast(content, "ScreenshotRedactorToast")
 }
 
 /**
@@ -87,9 +92,9 @@ function diagnosticsSummary(): string {
  */
 export default function Debug() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, Alert } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, Alert } = ReactNative
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }
@@ -114,7 +119,7 @@ export default function Debug() {
 								try {
 									showToast(probeNameModules())
 								} catch (error) {
-									console.error("[ScreenshotRedactor] probe failed:", error)
+									reportError("[ScreenshotRedactor] probe failed:", error)
 									showToast("Probe failed — see the log.")
 								}
 							}}

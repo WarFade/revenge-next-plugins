@@ -27,6 +27,12 @@
 import type { GhostLogSettings } from '../types'
 import { isDeletedId, isDeletedMessage } from '../lib/deleted'
 import { showToast } from '../../../../shared/toast'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { instead } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const TAG = '[GhostLogNativeBeta]'
 
@@ -89,7 +95,7 @@ function install(module: any, methods: string[], notice: string, cleanups: Array
 		// rewrite arguments. One `instead` per method and nothing else in this repo patches these,
 		// so the two-`instead` recursion trap (porting rule 2) does not apply.
 		cleanups.push(
-			revenge.patcher.instead(host, method, (args: any[], original: any) => {
+			instead(host, method, (args: any[], original: any) => {
 				try {
 					if (targetsDeletedMessage(args)) {
 						toast(notice)
@@ -97,14 +103,14 @@ function install(module: any, methods: string[], notice: string, cleanups: Array
 					}
 				} catch (error) {
 					// Never let the guard itself break a real reply or reaction.
-					console.error(`${TAG} ${method} guard failed:`, error)
+					reportError(`${TAG} ${method} guard failed:`, error)
 				}
 
 				return original(...args)
 			}),
 		)
 
-		console.log(`${TAG} guarded ${method}`)
+		if (DEBUG) console.log(`${TAG} guarded ${method}`)
 	}
 }
 
@@ -124,8 +130,8 @@ export default function patchBlockGhostActions(getSettings: () => GhostLogSettin
 	void getSettings
 
 	try {
-		const { lookupModules, waitForModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules, waitForModules } = finders
+		const { withProps } = filters
 
 		for (const target of TARGETS) {
 			const seen = new Set<any>()
@@ -140,11 +146,11 @@ export default function patchBlockGhostActions(getSettings: () => GhostLogSettin
 				for (const [exports] of lookupModules(withProps(target.prop))) accept(exports)
 				unsubscribes.push(waitForModules(withProps(target.prop), accept))
 			} catch (error) {
-				console.error(`${TAG} could not guard ${target.prop}:`, error)
+				reportError(`${TAG} could not guard ${target.prop}:`, error)
 			}
 		}
 	} catch (error) {
-		console.error(`${TAG} action guards unavailable:`, error)
+		reportError(`${TAG} action guards unavailable:`, error)
 	}
 
 	return () => {

@@ -4,11 +4,16 @@ import { armDump, probeDmNavigation, probeSortedGuildStore, setStockBar, stockBa
 import { refresh } from "../../patches/sortedGuilds"
 import { rowIcon } from "../icon"
 import { useBottomPadding } from "../safeArea"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../../shared/report"
 
-// Same ToastActionCreators pattern as GuildRow/FolderRow -- revenge.utils.toast.show
-// doesn't exist.
+// Same shared/toast.ts helper as GuildRow/FolderRow -- revenge.utils.toast.show doesn't exist.
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "HideServersDrawerToast", content })
+	sharedToast(content, "HideServersDrawerToast")
 }
 
 /**
@@ -18,10 +23,10 @@ function showToast(content: string) {
  */
 export default function Debug() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { React } = react
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 
@@ -29,7 +34,7 @@ export default function Debug() {
 		try {
 			showToast(probe())
 		} catch (error) {
-			console.error(`[HideServersDrawer] ${label} failed:`, error)
+			reportError(`[HideServersDrawer] ${label} failed:`, error)
 			showToast("Probe failed — see the log.")
 		}
 	}

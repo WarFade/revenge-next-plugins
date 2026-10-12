@@ -13,6 +13,11 @@
  * Technique adapted from HideBlockedAndIgnoredMessages (Zykrah, シグマ siguma).
  */
 
+import * as flux from '@revenge-mod/discord/flux'
+import * as commonFlux from '@revenge-mod/discord/common/flux'
+
+const DEBUG: boolean = false
+
 const MAX_DISPATCHES = 50
 
 let shapeLogged = false
@@ -21,8 +26,8 @@ export function rerenderViaFlux(): string {
 	let Dispatcher: any
 	let stores: any
 	try {
-		Dispatcher = (revenge.discord.common as any)?.flux?.Dispatcher
-		stores = (revenge.discord.flux as any)?.Stores
+		Dispatcher = (commonFlux as any)?.Dispatcher
+		stores = (flux as any)?.Stores
 	} catch {
 		return "Flux dispatcher unavailable"
 	}
@@ -60,7 +65,7 @@ export function rerenderViaFlux(): string {
 		shapeLogged = true
 		try {
 			const raw = typeof messages[0]?.toJS === "function" ? messages[0].toJS() : messages[0]
-			console.log(`[ScreenshotRedactor] cached message keys: ${Object.keys(raw ?? {}).sort().join(" ")}`)
+			if (DEBUG) console.log(`[ScreenshotRedactor] cached message keys: ${Object.keys(raw ?? {}).sort().join(" ")}`)
 		} catch {
 			/* shape logging must never break the repaint */
 		}
@@ -105,7 +110,7 @@ export function rerenderViaFlux(): string {
 	}
 
 	if (rejected > 0) {
-		console.log(`[ScreenshotRedactor] ${rejected}/${dispatched} MESSAGE_UPDATE rejected by other handlers`)
+		if (DEBUG) console.log(`[ScreenshotRedactor] ${rejected}/${dispatched} MESSAGE_UPDATE rejected by other handlers`)
 	}
 
 	return dispatched > 0

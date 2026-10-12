@@ -24,6 +24,7 @@
 import { capFor, debug, remainingFor, settings, TAG } from './state'
 import { nativeRequest, vaultStatus } from './vault'
 import type { AiRequest } from '../types'
+import { reportError } from '../../../../shared/report'
 
 // --- a queue with a concurrency limit ---------------------------------------
 
@@ -142,7 +143,7 @@ async function callOnce(
 		if (!result.ok) {
 			// 401 and 402 are the two the user can actually fix, so they are never swallowed.
 			if (result.error === 'http')
-				console.error(`${TAG} ${pluginId}: provider returned HTTP ${result.status}${result.details ? `: ${result.details}` : ''}`)
+				reportError(`${TAG} ${pluginId}: provider returned HTTP ${result.status}${result.details ? `: ${result.details}` : ''}`)
 			else debug(`${pluginId}: refused or failed (${result.error})`)
 			return undefined
 		}

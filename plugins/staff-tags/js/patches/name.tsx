@@ -4,6 +4,13 @@ import { DEFAULTS } from '../index'
 import { findInReactTree } from '../lib/findInReactTree'
 import getTag, { isBuiltInTag } from '../lib/getTag'
 import type { StaffTagsStorage } from '../index'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /**
  * Profile header tag -- `modules/user_profile/native/UserProfilePrimaryInfo.tsx`.
@@ -27,7 +34,7 @@ import type { StaffTagsStorage } from '../index'
 const PATH = 'modules/user_profile/native/UserProfilePrimaryInfo.tsx'
 
 const clone = (element: any, props: any): any =>
-	(revenge as any).react.React.cloneElement(element, props)
+	(React as any).cloneElement(element, props)
 
 /**
  * Copy of `root` with the first node matching `match` replaced by `replace(node)`, cloning
@@ -60,16 +67,15 @@ function replaceInTree(
 }
 
 export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
-	const { getModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withProps } = filters
 
 	let tagModule: any
 	const unsubscribeTag = getModules(withProps('getBotLabel'), (mod: any) => {
 		tagModule = mod
 	})
 
-	const { GuildStore, ChannelStore, SelectedChannelStore } = revenge.discord
-		.flux.Stores as any
+	const { GuildStore, ChannelStore, SelectedChannelStore } = Stores as any
 
 	/** The open channel, when it belongs to the profile's guild -- for channel-level mod roles. */
 	const channelFor = (guildId: string | undefined) => {
@@ -142,7 +148,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 				try {
 					return addTag(ret, props)
 				} catch (error) {
-					console.error('[StaffTags] profile tag:', error)
+					reportError('[StaffTags] profile tag:', error)
 					return ret
 				}
 			}
@@ -162,7 +168,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 				typeof ns?.default !== 'function' ||
 				typeof DisplayName !== 'function'
 			) {
-				console.warn('[StaffTags] profile: nothing to patch')
+				if (DEBUG) console.warn('[StaffTags] profile: nothing to patch')
 				return
 			}
 			let logged = false
@@ -174,20 +180,20 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 							ret,
 							(c: any) => c?.type === DisplayName,
 							(c: any) =>
-								(revenge as any).react.React.createElement(Wrapped, {
+								(React as any).createElement(Wrapped, {
 									...c.props,
 									key: c.key,
 								}),
 						)
 						if (!logged) {
 							logged = true
-							console.log(
+							if (DEBUG) console.log(
 								`[StaffTags] profile: ${out === ret ? 'unchanged' : 'changed'}`,
 							)
 						}
 						return out
 					} catch (error) {
-						console.error('[StaffTags] profile:', error)
+						reportError('[StaffTags] profile:', error)
 						return ret
 					}
 				}),

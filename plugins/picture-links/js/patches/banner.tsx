@@ -9,6 +9,13 @@
  */
 
 import { fullSize, openImage, TAG } from '../lib/media'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { after, before } from '@revenge-mod/patcher'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const PATH = 'modules/user_profile/native/UserProfileBanner.tsx'
 
@@ -17,7 +24,7 @@ function bannerURL(displayProfile: any): string | undefined {
 		const url = displayProfile?.getBannerURL?.({ canAnimate: true, size: 4096 })
 		if (typeof url === 'string') return fullSize(url)
 	} catch (error) {
-		console.error(`${TAG} banner URL failed:`, error)
+		reportError(`${TAG} banner URL failed:`, error)
 	}
 	return undefined
 }
@@ -30,15 +37,15 @@ export default function patchBanner(): () => void {
 	const apply = (mod: any) => {
 		try {
 			if (typeof mod?.default !== 'function') {
-				console.error(`${TAG} UserProfileBanner not found`)
+				reportError(`${TAG} UserProfileBanner not found`)
 				return
 			}
 			patches.push(
-				revenge.patcher.before(mod, 'default', (args: any[]) => {
+				before(mod, 'default', (args: any[]) => {
 					lastProps = args?.[0]
 					return args
 				}),
-				revenge.patcher.after(mod, 'default', (ret: any) => {
+				after(mod, 'default', (ret: any) => {
 					const props = lastProps
 					lastProps = undefined
 					try {
@@ -47,8 +54,7 @@ export default function patchBanner(): () => void {
 						const url = bannerURL(props?.displayProfile)
 						if (!url) return ret
 
-						const React = revenge.react.React
-						const { Pressable } = revenge.react.ReactNative
+						const { Pressable } = ReactNative
 						const open = () => openImage(url)
 						const child = ret.props.children
 
@@ -64,21 +70,21 @@ export default function patchBanner(): () => void {
 							),
 						})
 					} catch (error) {
-						console.error(`${TAG} banner press failed:`, error)
+						reportError(`${TAG} banner press failed:`, error)
 						return ret
 					}
 				}),
 			)
-			console.log(`${TAG} hooked UserProfileBanner`)
+			if (DEBUG) console.log(`${TAG} hooked UserProfileBanner`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook UserProfileBanner:`, error)
+			reportError(`${TAG} failed to hook UserProfileBanner:`, error)
 		}
 	}
 
 	try {
-		unsubscribe = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(PATH, apply)
+		unsubscribe = (finders as any).getModuleWithImportedPath(PATH, apply)
 	} catch (error) {
-		console.error(`${TAG} UserProfileBanner lookup failed:`, error)
+		reportError(`${TAG} UserProfileBanner lookup failed:`, error)
 	}
 
 	return () => {

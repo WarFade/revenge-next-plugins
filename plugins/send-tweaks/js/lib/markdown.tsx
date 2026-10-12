@@ -16,6 +16,9 @@
  */
 
 import { token } from './colours'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 type Node = any
 
@@ -49,7 +52,7 @@ function fontFor(f: Format): string {
 }
 
 function stores(): any {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 function mentionName(kind: string, id: string): string {
@@ -102,8 +105,7 @@ function timestamp(seconds: string, style: string | undefined): string {
 
 /** A spoiler: blacked out until tapped, like Discord's. */
 function Spoiler({ children }: { children: any }) {
-	const React = revenge.react.React
-	const { Text } = revenge.react.ReactNative
+	const { Text } = ReactNative
 	const [shown, setShown] = React.useState(false)
 	return (
 		<Text
@@ -124,7 +126,7 @@ type Inner = (text: string, add?: Format) => Node[]
 type Rule = { re: RegExp; render: (m: RegExpExecArray, inner: Inner, key: string, f: Format) => Node }
 
 function inlineRules(): Rule[] {
-	const { Text, Linking } = revenge.react.ReactNative as any
+	const { Text, Linking } = ReactNative as any
 	const linkColour = token('TEXT_LINK', '#00a8fc')
 	const link = (label: Node, url: string, key: string) => (
 		<Text key={key} style={{ color: linkColour }} onPress={() => Linking.openURL(url).catch(() => {})}>
@@ -318,7 +320,7 @@ export function parseBlocks(source: string): Block[] {
 
 /** The whole message, as a column of blocks, in the theme's text colours. */
 export function renderMarkdown(source: string): Node {
-	const { View, Text } = revenge.react.ReactNative
+	const { View, Text } = ReactNative
 	const textColour = token('TEXT_DEFAULT', '#dbdee1')
 	const mutedColour = token('TEXT_MUTED', '#949ba4')
 

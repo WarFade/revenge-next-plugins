@@ -23,6 +23,14 @@
 import { findMessageSheetGroupParent } from '../../../../shared/messageSheet'
 import { debug, settings } from '../lib/state'
 import { rowStateFor, toggleTranslation } from '../lib/translate'
+import * as assets from '@revenge-mod/assets'
+import * as actions from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import * as react from '@revenge-mod/react'
+import { reportError } from '../../../../shared/report'
 
 const SYM_PATCHED = Symbol.for('Patched by Translate')
 
@@ -52,7 +60,7 @@ export function sheetStatus(): {
 let RowBoundary: any
 function getRowBoundary(): any {
 	if (RowBoundary) return RowBoundary
-	const { React } = revenge.react
+	const { React } = react
 
 	RowBoundary = class TranslateRowBoundary extends React.Component<
 		{ children?: any },
@@ -66,7 +74,7 @@ function getRowBoundary(): any {
 
 		componentDidCatch(error: unknown) {
 			status.lastError = String((error as any)?.stack ?? error).slice(0, 500)
-			console.error('[Translate] sheet row failed to render:', error)
+			reportError('[Translate] sheet row failed to render:', error)
 		}
 
 		render() {
@@ -85,7 +93,7 @@ function isMessageSheet(key: string) {
 }
 
 function findGroupParent(tree: any): any {
-	return findMessageSheetGroupParent(tree, revenge.discord.design.Design.ActionSheet, ActionSheetRowComponent()?.Group)
+	return findMessageSheetGroupParent(tree, Design.ActionSheet, ActionSheetRowComponent()?.Group)
 }
 
 let actionSheetRow: any
@@ -94,8 +102,8 @@ function ActionSheetRowComponent() {
 		// Looked up at the moment a sheet opens rather than from start(): `lookupModule`
 		// permanently caches a miss, and this is sheet UI that may not have loaded on a cold
 		// launch. By the time a sheet is rendering, it has (porting rule 3).
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetRow = lookupModule<any>(withProps('ActionSheetRow'))?.[0]
 			?.ActionSheetRow
 	}
@@ -106,8 +114,8 @@ function buildRow(channelId: string, messageId: string, text: string) {
 	const ActionSheetRow = ActionSheetRowComponent()
 	if (!ActionSheetRow) return null
 
-	const { getAssetIdByName } = revenge.assets
-	const { TableRowIcon } = revenge.discord.design.Design as any
+	const { getAssetIdByName } = assets
+	const { TableRowIcon } = Design as any
 	const target = settings().target
 
 	// The same row does both directions, so the label has to say which one it is about to do.
@@ -125,13 +133,13 @@ function buildRow(channelId: string, messageId: string, text: string) {
 
 	const onPress = () => {
 		try {
-			revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+			actions.ActionSheetActionCreators.hideActionSheet()
 		} catch {
 			/* most rows close the sheet themselves */
 		}
 		// Not awaited: the sheet should close now, and the row updates when the answer lands.
 		toggleTranslation(channelId, messageId, text).catch(error => {
-			console.error('[Translate] translation failed:', error)
+			reportError('[Translate] translation failed:', error)
 		})
 	}
 
@@ -219,13 +227,13 @@ function patchSheetModule(mod: any, patches: Array<() => void>) {
 				status.injected = true
 			}
 		} catch (error) {
-			console.error('[Translate] sheet injection failed:', error)
+			reportError('[Translate] sheet injection failed:', error)
 		}
 		return rendered
 	}
 
 	try {
-		patches.push(revenge.patcher.after(mod, 'default', applyTo))
+		patches.push(after(mod, 'default', applyTo))
 		patchedModules.add(mod)
 		return mod
 	} catch {
@@ -234,7 +242,7 @@ function patchSheetModule(mod: any, patches: Array<() => void>) {
 			const Original = mod.default
 			return { ...mod, default: (props: any) => applyTo(Original(props)) }
 		} catch (error) {
-			console.error('[Translate] could not patch sheet module:', error)
+			reportError('[Translate] could not patch sheet module:', error)
 			return mod
 		}
 	}
@@ -248,11 +256,11 @@ function textOf(message: any): string {
 }
 
 export default function patchMessageActionSheet(): () => void {
-	const { ActionSheetActionCreators } = revenge.discord.actions
+	const { ActionSheetActionCreators } = actions
 	const patches: Array<() => void> = []
 
 	patches.push(
-		revenge.patcher.before(
+		before(
 			ActionSheetActionCreators as any,
 			'openLazy',
 			(args: any[]) => {
@@ -284,7 +292,7 @@ export default function patchMessageActionSheet(): () => void {
 						args[0] = sheet.then((mod: any) => patchSheetModule(mod, patches))
 					}
 				} catch (error) {
-					console.error('[Translate] openLazy hook failed:', error)
+					reportError('[Translate] openLazy hook failed:', error)
 				}
 
 				// A before-hook must return the args array -- returning nothing sets args to

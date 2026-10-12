@@ -8,6 +8,10 @@ import { useBottomPadding } from '../safeArea'
 import { byName, MAX_FAVOURITES } from './Hub'
 import type { Entry } from '../../types'
 import { useChangelog } from '../../../../../shared/changelog'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * Settings for one hub page: its favourites, their order, and which of its plugins get a shortcut
@@ -30,12 +34,10 @@ export function AiHubSettings() {
 
 function SettingsPage({ ai }: { ai: boolean }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View, Pressable } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } =
-		revenge.discord.design.Design
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View, Pressable } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	const storage = getStorage()

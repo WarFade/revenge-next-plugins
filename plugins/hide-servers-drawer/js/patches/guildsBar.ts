@@ -3,6 +3,12 @@ import { isEmpty, instant } from "../lib/hidden"
 import { consumeDumpArmed, dumpElementTree, dumpIncomingProps, noteBranch, notifyDumpDone, stockBar } from "../lib/probe"
 import CustomGuildsBar from "../ui/components/CustomGuildsBar"
 import { registerIntercept, unregisterIntercept } from "./createElementIntercept"
+import { getModules } from "@revenge-mod/modules/finders"
+import { withName } from "@revenge-mod/modules/finders/filters"
+import { instead } from "@revenge-mod/patcher"
+import { createElement } from "react"
+
+const DEBUG: boolean = false
 
 // Nulling individual guild-bar rows leaves the row in the virtualized list's geometry -- the
 // bar keeps a phantom slot and tapping a server jumps the scroll position, because a
@@ -64,7 +70,7 @@ export default function patchGuildsBar(): () => void {
 
 		try {
 			patches.push(
-				revenge.patcher.instead(bar, "type", (args: any[], callOriginal: any) => {
+				instead(bar, "type", (args: any[], callOriginal: any) => {
 					// Dev probes (lib/probe.ts): stockBar() leaves the stock bar alone even
 					// while servers are hidden, and an armed dump renders stock once while
 					// capturing its props and element tree.
@@ -92,7 +98,7 @@ export default function patchGuildsBar(): () => void {
 						}
 						return out
 					}
-					return revenge.react.React.createElement(CustomGuildsBar, null)
+					return createElement(CustomGuildsBar, null)
 				}),
 			)
 		} catch {
@@ -106,8 +112,8 @@ export default function patchGuildsBar(): () => void {
 			try {
 				const fallback = (props: any) =>
 					isEmpty() || !instant() || stockBar()
-						? revenge.react.React.createElement(original, props)
-						: revenge.react.React.createElement(CustomGuildsBar, null)
+						? createElement(original, props)
+						: createElement(CustomGuildsBar, null)
 
 				registerIntercept(original, fallback)
 				patches.push(() => unregisterIntercept(original))
@@ -135,19 +141,19 @@ export default function patchGuildsBar(): () => void {
 		null,
 		(mod: any) => {
 			if (mod?.default?.type) patchBar(mod.default)
-			else console.warn("[HideServersDrawer] GuildsBar.tsx default is not a memo wrapper:", typeof mod?.default)
+			else { if (DEBUG) console.warn("[HideServersDrawer] GuildsBar.tsx default is not a memo wrapper:", typeof mod?.default) }
 		},
 		"[HideServersDrawer]",
 	)
 	let unsubscribeNamed = () => {}
 	let unsubscribeMemo = () => {}
 	try {
-		unsubscribeNamed = revenge.modules.finders.getModules(
-			revenge.modules.finders.filters.withName("GuildsBar"),
+		unsubscribeNamed = getModules(
+			withName("GuildsBar"),
 			patchBar,
 			{ max: 5 },
 		)
-		unsubscribeMemo = revenge.modules.finders.getModules(withMemoName("GuildsBar"), patchBar, { max: 5 })
+		unsubscribeMemo = getModules(withMemoName("GuildsBar"), patchBar, { max: 5 })
 	} catch {
 		/* leave the bar unpatched */
 	}

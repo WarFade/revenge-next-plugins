@@ -1,6 +1,9 @@
 import Debug from './pages/Debug'
 import Saved from './pages/Saved'
 import WhenToOffer from './pages/WhenToOffer'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.tldr'
 
@@ -14,7 +17,7 @@ export const DEBUG_ROUTE = `${PREFIX}.debug`
  * whichever is actually there.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -24,8 +27,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	const page = (route: string, title: string, component: any) =>
 		registerSettingsItem(route, {
@@ -43,7 +45,7 @@ export function registerPages(): () => void {
 		unregister = [
 			page(OFFER_ROUTE, 'When to offer it', WhenToOffer),
 			page(SAVED_ROUTE, 'Saved summaries', Saved),
-			page(DEBUG_ROUTE, 'Debug', Debug),
+			...(DEBUG ? [page(DEBUG_ROUTE, 'Debug', Debug)] : []),
 		]
 
 		refreshSettingsUI()

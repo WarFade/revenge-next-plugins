@@ -15,6 +15,7 @@ import Settings from "./ui/pages/Settings"
 import type { ScreenshotRedactorStorage } from "./types"
 import { CHANGELOG } from "./changelog"
 import { setupChangelog } from "../../../shared/changelog"
+import { reportError, setReporter } from "../../../shared/report"
 
 export type { ScreenshotRedactorStorage }
 export { DEFAULTS }
@@ -25,6 +26,10 @@ export default plugin<{ jsonStorage: ScreenshotRedactorStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -45,7 +50,7 @@ export default plugin<{ jsonStorage: ScreenshotRedactorStorage }>({
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error("[ScreenshotRedactor] failed to register settings pages:", error)
+			reportError("[ScreenshotRedactor] failed to register settings pages:", error)
 		}
 
 		// Patches are installed unconditionally and gated per-call on `enabled`, rather than
@@ -60,7 +65,7 @@ export default plugin<{ jsonStorage: ScreenshotRedactorStorage }>({
 			try {
 				cleanup(patch())
 			} catch (error) {
-				console.error(`[ScreenshotRedactor] failed to apply ${name}:`, error)
+				reportError(`[ScreenshotRedactor] failed to apply ${name}:`, error)
 			}
 		}
 

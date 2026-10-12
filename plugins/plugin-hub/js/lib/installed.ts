@@ -1,3 +1,6 @@
+/// <reference types="@revenge-mod/types/hidden" />
+import * as hiddenPlugins from '@revenge-mod/plugins/_'
+
 /**
  * What is installed, when Revenge will say.
  *
@@ -45,7 +48,7 @@ export interface Installed {
 
 export function internals(): any {
 	try {
-		return (revenge as any).hidden?.plugins?.internal
+		return (hiddenPlugins as any)
 	} catch {
 		// The hidden API is built from lazy properties; a failure resolving one is "not available".
 		return undefined

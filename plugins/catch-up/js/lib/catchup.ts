@@ -18,6 +18,7 @@ import { keepKnownMentions } from './mentions'
 import { summarise } from './summarise'
 import { buildTranscript, channelLabel } from './transcript'
 import type { CommandArgument, CommandContext } from './commands'
+import { reportError } from '../../../../shared/report'
 
 /** Below this there is nothing worth paying to summarise. */
 const MIN_MESSAGES = 5
@@ -113,7 +114,7 @@ export function installCommand(): () => void {
 			// Deliberately not awaited: Discord's command dispatch does not want a promise, and
 			// the summary arrives as its own message whenever it is ready.
 			run(args, context).catch(error => {
-				console.error('[CatchUp] /catchup failed:', error)
+				reportError('[CatchUp] /catchup failed:', error)
 				const channelId = context?.channel?.id
 				if (channelId)
 					report(channelId, 'Catch Up hit an error. See the debug log.')

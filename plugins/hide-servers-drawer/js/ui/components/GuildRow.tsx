@@ -8,13 +8,18 @@ import ContextMenu from "./ContextMenu"
 import GuildIcon from "./GuildIcon"
 import MorphIcon from "./MorphIcon"
 import Pill from "./Pill"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModules } from "@revenge-mod/modules/finders"
+import { withProps } from "@revenge-mod/modules/finders/filters"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // revenge.utils.toast.show doesn't exist -- was a guess, confirmed wrong on-device
-// ("Cannot read property 'show' of undefined" at preInit). ToastActionCreators.open is
-// confirmed live from revenge-bundle-next's own source (used by the staff-settings and
-// developer-kit internal plugins).
+// ("Cannot read property 'show' of undefined" at preInit). Toasts go through shared/toast.ts,
+// which picks the ToastActionCreators signature this Discord build has (it changed on 350.4).
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "HideServersDrawerToast", content })
+	sharedToast(content, "HideServersDrawerToast")
 }
 
 // Flux stores are looked up by name directly through the Stores proxy, not a module finder
@@ -22,7 +27,7 @@ function showToast(content: string) {
 // The *selected* guild id is assumed to live on a dedicated SelectedGuildStore, not
 // GuildStore (GuildStore only holds guild data: getGuild/getGuilds), matching classic Revenge.
 // Read per call, never at module scope -- see docs/porting-rules.md rule 1.
-const stores = (): any => revenge.discord.flux.Stores
+const stores = (): any => Stores
 
 // getModules, not lookupModule: confirmed on-device (staff-tags plugin) that a lazily-loaded
 // module can still be unregistered even from inside start() -- this file's top-level code
@@ -30,7 +35,7 @@ const stores = (): any => revenge.discord.flux.Stores
 // registry is populated. lookupModule gives up immediately and permanently caches a false
 // "not found"; getModules subscribes and calls back whenever the module actually loads.
 let routing: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("transitionToGuild"), (mod: any) => {
+getModules(withProps("transitionToGuild"), (mod: any) => {
 	routing = mod
 })
 
@@ -58,7 +63,7 @@ function readSelectedGuildId(): string | null {
  * every switch.
  */
 export function useSelectedGuildId(): string | null {
-	const { React } = revenge.react
+	const { React } = react
 
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 
@@ -83,8 +88,8 @@ export function useSelectedGuildId(): string | null {
  * subscribes internally.
  */
 function GuildRow({ id, selected, onNavigated }: { id: string; selected: boolean; onNavigated?: () => void }) {
-	const { React } = revenge.react
-	const { Pressable, View } = revenge.react.ReactNative
+	const { React } = react
+	const { Pressable, View } = ReactNative
 
 	const [menuOpen, setMenuOpen] = React.useState(false)
 
@@ -164,7 +169,7 @@ function GuildRow({ id, selected, onNavigated }: { id: string; selected: boolean
 let Memoized: any
 
 export default function GuildRowMemo(props: { id: string; selected: boolean; onNavigated?: () => void }) {
-	const { React } = revenge.react
+	const { React } = react
 	Memoized ??= React.memo(GuildRow)
 	return <Memoized {...props} />
 }

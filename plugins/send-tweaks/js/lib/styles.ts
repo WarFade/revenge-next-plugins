@@ -34,6 +34,7 @@
 import { protectedPattern } from './codeSpans'
 import { getAi, TAG } from './state'
 import type { SendTweaksStorage } from '../types'
+import { reportError } from '../../../../shared/report'
 
 export interface CustomStyle {
 	id: string
@@ -362,7 +363,7 @@ export async function restyle(draft: string, style: Style): Promise<Restyled> {
 			timeoutMs: 30_000,
 		})
 	} catch (error: any) {
-		console.error(`${TAG} restyle failed:`, error)
+		reportError(`${TAG} restyle failed:`, error)
 		return { ok: false, error: error?.message ? `AI request error: ${error.message}` : 'The AI request failed.' }
 	}
 	const out = clean(answer ?? '', masked)

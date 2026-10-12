@@ -17,6 +17,11 @@
  * `parseMessageMarkup` memoizes its result per record, so those stay stripped until reparsed.
  */
 
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before, instead } from '@revenge-mod/patcher'
+import { reportError, setReporter } from '../../../shared/report'
+
 const TAG = '[ANSI Colours]'
 const ESCAPE = /\u001b\[[0-9;]*m/g
 // Discord's codeBlock rule, limited to the ansi language.
@@ -89,8 +94,8 @@ function bypassStrip(): () => void {
 
 	const unpatches: (() => void)[] = []
 	const unsubscribes: (() => void)[] = []
-	const { getModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withProps } = filters
 
 	for (const [marker, names] of nativeBuilders) {
 		unsubscribes.push(
@@ -98,7 +103,7 @@ function bypassStrip(): () => void {
 				for (const name of names) {
 					if (typeof exports?.[name] !== 'function') continue
 					unpatches.push(
-						revenge.patcher.instead(exports, name, function (this: any, args: any[], original: any) {
+						instead(exports, name, function (this: any, args: any[], original: any) {
 							if (typeof original !== 'function') return undefined
 							depth++
 							try {
@@ -122,8 +127,8 @@ function bypassStrip(): () => void {
 
 /** Puts the codes back into chat rows whose record was parsed before the plugin started. */
 function restoreRows(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 	const unpatches: (() => void)[] = []
 	let pending: string[] | undefined
 
@@ -134,7 +139,7 @@ function restoreRows(): () => void {
 		// before + after, not instead: other plugins already put an `instead` on generate, and a
 		// second one can recurse forever (revenge-bundle-next patcher).
 		unpatches.push(
-			revenge.patcher.before(proto, 'generate', (args: any[]) => {
+			before(proto, 'generate', (args: any[]) => {
 				pending = undefined
 				try {
 					const raw = args[0]?.rowType === 1 ? args[0].message?.content : undefined
@@ -143,14 +148,14 @@ function restoreRows(): () => void {
 						if (bodies.length) pending = bodies
 					}
 				} catch (error) {
-					console.error(`${TAG} before generate failed:`, error)
+					reportError(`${TAG} before generate failed:`, error)
 				}
 				return args
 			}),
 		)
 
 		unpatches.push(
-			revenge.patcher.after(proto, 'generate', (ret: any) => {
+			after(proto, 'generate', (ret: any) => {
 				const bodies = pending
 				pending = undefined
 				if (!bodies) return ret
@@ -159,7 +164,7 @@ function restoreRows(): () => void {
 					const message = ret?.message
 					if (Array.isArray(message?.content)) message.content = restore(message.content, bodies)
 				} catch (error) {
-					console.error(`${TAG} after generate failed:`, error)
+					reportError(`${TAG} after generate failed:`, error)
 				}
 				return ret
 			}),
@@ -173,16 +178,20 @@ function restoreRows(): () => void {
 }
 
 export default plugin({
-	start({ cleanup }) {
+	start({ cleanup, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		try {
 			cleanup(bypassStrip())
 		} catch (error) {
-			console.error(`${TAG} strip bypass failed:`, error)
+			reportError(`${TAG} strip bypass failed:`, error)
 		}
 		try {
 			cleanup(restoreRows())
 		} catch (error) {
-			console.error(`${TAG} row restore failed:`, error)
+			reportError(`${TAG} row restore failed:`, error)
 		}
 	},
 })

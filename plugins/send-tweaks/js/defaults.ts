@@ -19,6 +19,8 @@ export const DEFAULTS: SendTweaksStorage = {
 	// On, with no rules: nothing happens until you add or import one.
 	linkRewrite: true,
 	linkRules: [],
+	// Off: it changes the message box while you type, which should only ever be a choice.
+	liveReplace: false,
 	// Off: a message nobody is notified about is easy to miss, so this is only ever a choice.
 	silentMessages: false,
 	// On: holding send does nothing in stock Discord, and both need a deliberate hold and slide.

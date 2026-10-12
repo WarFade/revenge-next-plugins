@@ -1,3 +1,9 @@
+import * as modulesFinders from '@revenge-mod/discord/utils/modules/finders'
+import { getModules } from '@revenge-mod/modules/finders'
+import { reportError } from './report'
+
+const DEBUG: boolean = false
+
 /**
  * Finds a Discord module by the file path it reports to Discord's import tracker, with a name
  * filter as a fallback.
@@ -38,28 +44,28 @@ export function getModuleByPath(
 		Promise.resolve().then(unsubscribeAll)
 		try {
 			callback(mod)
-			console.log(`${tag} found ${path} (${via})`)
+			if (DEBUG) console.log(`${tag} found ${path} (${via})`)
 		} catch (error) {
-			console.error(`${tag} patching ${path} failed:`, error)
+			reportError(`${tag} patching ${path} failed:`, error)
 		}
 	}
 
 	try {
-		const finders = revenge.discord.utils.modules.finders as any
+		const finders = modulesFinders as any
 		unsubs.push(finders.getModuleWithImportedPath(path, (mod: any) => run(mod, 'path')))
 	} catch (error) {
-		console.error(`${tag} path lookup for ${path} failed:`, error)
+		reportError(`${tag} path lookup for ${path} failed:`, error)
 	}
 
 	if (!done && fallback) {
 		try {
 			unsubs.push(
-				revenge.modules.finders.getModules(fallback as any, (mod: any) => run(mod, 'name'), {
+				getModules(fallback as any, (mod: any) => run(mod, 'name'), {
 					returnNamespace: true,
 				} as any),
 			)
 		} catch (error) {
-			console.error(`${tag} name lookup for ${path} failed:`, error)
+			reportError(`${tag} name lookup for ${path} failed:`, error)
 		}
 	}
 

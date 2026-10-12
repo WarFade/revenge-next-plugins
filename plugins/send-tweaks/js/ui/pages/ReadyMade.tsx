@@ -6,6 +6,13 @@ import { FieldRow } from '../fieldGroup'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import { showToast as triggerToast } from '../../lib/toast'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../../shared/report'
 
 function showToast(content: string) {
 	triggerToast(content, { key: 'SendTweaksReadyToast' })
@@ -18,15 +25,15 @@ function showToast(content: string) {
  */
 function openThread(): boolean {
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		const routing = lookupModule<any>(withProps('transitionToGuild'))?.[0]
 		const host = typeof routing?.transitionTo === 'function' ? routing : routing?.default
 		if (typeof host?.transitionTo !== 'function') return false
 		host.transitionTo(`/channels/${THREAD.guildId}/${THREAD.channelId}`)
 		return true
 	} catch (error) {
-		console.error('[SendTweaks] could not open the thread:', error)
+		reportError('[SendTweaks] could not open the thread:', error)
 		return false
 	}
 }
@@ -55,10 +62,10 @@ export function ReadyMadeText() {
  */
 function ReadyMade({ kind }: { kind: RuleKind }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput, TextArea } = revenge.discord.design.Design
+	const { React } = react
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput, TextArea } = Design
 	const ImportInput = (TextArea ?? TextInput) as any
 
 	const links = kind === 'links'

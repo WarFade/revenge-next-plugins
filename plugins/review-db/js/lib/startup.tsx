@@ -11,6 +11,9 @@ import { getCurrentUserInfo, readNotification } from './api'
 import { openURL, TAG, toast } from './discord'
 import { NotificationType } from './entities'
 import { getToken, setSetting, settings, updateAuth } from './state'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { reportError } from '../../../../shared/report'
 
 export async function refreshUser({ notify = false } = {}) {
 	if (!getToken()) return
@@ -37,8 +40,8 @@ export async function refreshUser({ notify = false } = {}) {
 
 function showNotice(title: string, content: string, isBan: boolean) {
 	try {
-		const { AlertModal, AlertActionButton } = revenge.discord.design.Design as any
-		const Alerts = revenge.discord.actions.AlertActionCreators
+		const { AlertModal, AlertActionButton } = Design as any
+		const Alerts = AlertActionCreators
 		const key = 'ReviewDB-notice'
 		Alerts.openAlert(
 			key,
@@ -67,7 +70,7 @@ function showNotice(title: string, content: string, isBan: boolean) {
 			/>,
 		)
 	} catch (error) {
-		console.error(`${TAG} could not show notice:`, error)
+		reportError(`${TAG} could not show notice:`, error)
 		toast(`${title}: ${content}`.slice(0, 160))
 	}
 }

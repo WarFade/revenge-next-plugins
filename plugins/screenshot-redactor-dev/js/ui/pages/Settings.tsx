@@ -6,10 +6,18 @@ import { useBottomPadding } from "../safeArea"
 import { DEBUG_ROUTE, VISUALS_ROUTE } from "../routes"
 import type { ScreenshotRedactorStorage } from "../../types"
 import { useChangelog } from "../../../../../shared/changelog"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import { ReactNavigationNative } from "@revenge-mod/externals/react-navigation"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../../shared/report"
+
+const DEBUG: boolean = false
 
 // Read inside the component, never at module scope -- see docs/porting-rules.md rule 1.
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "ScreenshotRedactorToast", content })
+	sharedToast(content, "ScreenshotRedactorToast")
 }
 
 /**
@@ -30,10 +38,10 @@ export default function Settings({
 }) {
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableSwitchRow, TableRow } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableSwitchRow, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	const settings = api.jsonStorage.use() ?? DEFAULTS
@@ -108,13 +116,13 @@ export default function Settings({
 					</TableRowGroup>
 
 					<TableRowGroup title="Developer" hasIcons>
-						<TableRow
+						{DEBUG && (<TableRow
 							label="Debug"
 							subLabel="Verbose logging, module probe, diagnostics"
 							icon={rowIcon("BugIcon")}
 							arrow
 							onPress={() => navigation.navigate(DEBUG_ROUTE)}
-						/>
+						/>)}
 						<TableRow
 							label="Reload Discord"
 							subLabel="Marks the plugin as needing a reload, then reload when it suits you — the sure way to clear every leftover placeholder at once."
@@ -124,7 +132,7 @@ export default function Settings({
 									api.plugin.requireReload()
 									showToast("Reload marked — reload Discord from the plugin list to finish.")
 								} catch (error) {
-									console.error("[ScreenshotRedactor] requireReload failed:", error)
+									reportError("[ScreenshotRedactor] requireReload failed:", error)
 									showToast("Couldn't mark for reload — see the log.")
 								}
 							}}

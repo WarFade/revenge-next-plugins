@@ -24,6 +24,12 @@
 
 import { settings, TAG, toast } from './state'
 import { toGif, uploadGif } from './upload'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /** Discord's sticker `format_type`. */
 const FORMAT = { PNG: 1, APNG: 2, LOTTIE: 3, GIF: 4 } as const
@@ -56,7 +62,7 @@ function replaceMethod(host: any, key: string, make: (original: (...args: any[])
 		}
 	}
 	if (host[key] !== wrapper) {
-		console.log(`${TAG} ${key} is read-only here, skipped`)
+		if (DEBUG) console.log(`${TAG} ${key} is read-only here, skipped`)
 		return undefined
 	}
 	return () => {
@@ -67,7 +73,7 @@ function replaceMethod(host: any, key: string, make: (original: (...args: any[])
 }
 
 function stores(): any {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 function hasNitro(): boolean {
@@ -141,7 +147,7 @@ async function sendOne(channelId: string, sticker: any, options: unknown) {
 			return
 		} catch (error: any) {
 			if (!/not an animated PNG/.test(String(error?.message ?? error))) {
-				console.error(`${TAG} animated sticker failed, sending the still:`, error)
+				reportError(`${TAG} animated sticker failed, sending the still:`, error)
 				toast(`Sent as a still: ${error?.message ?? 'conversion failed'}`)
 			}
 		}
@@ -180,21 +186,21 @@ function rewriteSend(original: (...args: any[]) => any) {
 					try {
 						await sendOne(channelId, sticker, options)
 					} catch (error) {
-						console.error(`${TAG} sticker send failed:`, error)
+						reportError(`${TAG} sticker send failed:`, error)
 					}
 				}
 			})()
 			return result ?? Promise.resolve()
 		} catch (error) {
-			console.error(`${TAG} sticker send rewrite failed:`, error)
+			reportError(`${TAG} sticker send rewrite failed:`, error)
 			return original.apply(this, args)
 		}
 	}
 }
 
 export function installPatches(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withProps } = filters
 	const undos: Array<() => void> = []
 	const keep = (undo: (() => void) | undefined) => {
 		if (undo) undos.push(undo)
@@ -205,7 +211,7 @@ export function installPatches(): () => void {
 			try {
 				if (typeof mod?.[prop] === 'function') onModule(mod)
 			} catch (error) {
-				console.error(`${TAG} hooking ${prop} failed:`, error)
+				reportError(`${TAG} hooking ${prop} failed:`, error)
 			}
 		})
 

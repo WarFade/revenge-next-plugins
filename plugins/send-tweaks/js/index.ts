@@ -28,6 +28,7 @@ import Settings from './ui/pages/Settings'
 import { safePage } from './ui/safePage'
 import { AI_ROUTE, registerPages } from './ui/routes'
 import type { AiHandle, SendTweaksStorage } from './types'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { SendTweaksStorage }
@@ -39,6 +40,10 @@ export default plugin<{ jsonStorage: SendTweaksStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		const { cleanup, jsonStorage, plugin } = api
 		if (plugin.startedLate) {
 			plugin.requireReload()
@@ -60,7 +65,7 @@ export default plugin<{ jsonStorage: SendTweaksStorage }>({
 		try {
 			ai?.setSettingsRoute?.(AI_ROUTE)
 		} catch (error) {
-			console.error('[SendTweaks] could not register a settings route with AI Core:', error)
+			reportError('[SendTweaks] could not register a settings route with AI Core:', error)
 		}
 		cleanup(() => setAi(undefined))
 
@@ -69,7 +74,7 @@ export default plugin<{ jsonStorage: SendTweaksStorage }>({
 			try {
 				cleanup(patch())
 			} catch (error) {
-				console.error(`[SendTweaks] failed to apply ${name}:`, error)
+				reportError(`[SendTweaks] failed to apply ${name}:`, error)
 			}
 		}
 
@@ -87,7 +92,7 @@ export default plugin<{ jsonStorage: SendTweaksStorage }>({
 			try {
 				refreshClearUrlsIfStale()
 			} catch (error) {
-				console.error('[SendTweaks] ClearURLs refresh failed:', error)
+				reportError('[SendTweaks] ClearURLs refresh failed:', error)
 			}
 		}, 8000)
 		cleanup(() => clearTimeout(refresh))

@@ -21,6 +21,7 @@ import { importRules } from './importRules'
 import type { RuleKind } from './ruleStore'
 import { getAi } from './state'
 import { applyRules, compileRule, newRule, type Rule } from './textReplace'
+import { reportError } from '../../../../shared/report'
 
 export interface Example {
 	input: string
@@ -111,7 +112,7 @@ export async function draftRule(kind: RuleKind, description: string): Promise<Dr
 			timeoutMs: 30_000,
 		})
 	} catch (error: any) {
-		console.error('[SendTweaks] AI rule request failed:', error)
+		reportError('[SendTweaks] AI rule request failed:', error)
 		return { ok: false, error: error?.message ? `AI request error: ${error.message}` : 'AI request failed. Check your API key or description.' }
 	}
 	if (!answer || typeof answer !== 'object') {

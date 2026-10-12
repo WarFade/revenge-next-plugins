@@ -1,4 +1,6 @@
 import { getModuleByPath } from "../../../../../shared/modules"
+import { Design } from "@revenge-mod/discord/design"
+import { withName } from "@revenge-mod/modules/finders/filters"
 
 // A subscription, not a one-off lookup: confirmed on-device (staff-tags plugin) that a
 // lazily-loaded UI component can still be unregistered even from inside start() -- it only
@@ -16,7 +18,7 @@ function subscribeRowCheckmark() {
 	subscribed = true
 	getModuleByPath(
 		"design/void/Form/native/FormCheckmark.tsx",
-		revenge.modules.finders.filters.withName("RowCheckmark"),
+		withName("RowCheckmark"),
 		(mod: any) => {
 			if (typeof mod?.default === "function") rowCheckmark = mod.default
 		},
@@ -38,7 +40,7 @@ export function SelectableRow({
 	// Read per-render, never at module scope -- see the "Never touch revenge.* at module scope"
 	// section in the README. Design is a lazy proxy over lookupModule, and resolving it during
 	// preInit poisons the shared filter key for the whole app, Revenge's own settings UI included.
-	const { TableRow } = revenge.discord.design.Design
+	const { TableRow } = Design
 
 	subscribeRowCheckmark()
 	const RowCheckmark = rowCheckmark

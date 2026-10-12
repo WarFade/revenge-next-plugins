@@ -4,6 +4,13 @@ import { getStorage, patch, TAG } from '../../lib/state'
 import { FieldRow } from '../fieldGroup'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../../shared/report'
 
 const ALERT_KEY = 'VeilWord'
 const keyOf = (word: string) => word.trim().toLowerCase()
@@ -11,7 +18,7 @@ const keyOf = (word: string) => word.trim().toLowerCase()
 /** The open channel is the one the user will look at next, so it is redrawn with the change. */
 function repaintCurrent() {
 	try {
-		const id = (revenge.discord.flux.Stores as any).SelectedChannelStore?.getChannelId?.()
+		const id = (Stores as any).SelectedChannelStore?.getChannelId?.()
 		if (id) repaintChannel(id)
 	} catch {
 		/* the next scroll picks it up */
@@ -23,8 +30,8 @@ function repaintCurrent() {
  * sticker names, remove, close.
  */
 function openWord(word: string, words: string[], stickerWords: string[]) {
-	const { AlertModal, AlertActionButton, Text } = revenge.discord.design.Design as any
-	const alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton, Text } = Design as any
+	const alerts = AlertActionCreators
 	const close = () => alerts.dismissAlert(ALERT_KEY)
 	const stickers = stickerWords.some(w => keyOf(w) === keyOf(word))
 	const others = stickerWords.filter(w => keyOf(w) !== keyOf(word))
@@ -64,7 +71,7 @@ function openWord(word: string, words: string[], stickerWords: string[]) {
 			/>,
 		)
 	} catch (error) {
-		console.error(`${TAG} could not open the word:`, error)
+		reportError(`${TAG} could not open the word:`, error)
 	}
 }
 
@@ -80,11 +87,9 @@ function openWord(word: string, words: string[], stickerWords: string[]) {
  */
 export default function Words() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TextInput } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TextInput } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

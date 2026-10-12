@@ -1,4 +1,6 @@
 import { rowIcon } from '../icon'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
 
 /**
  * AI Core at a glance, at the top of the AI Hub: which provider and model, today's calls against the
@@ -52,8 +54,7 @@ export default function AiInfo({
 	/** Navigates to a route: AI Core's settings, or a plugin's page. */
 	onOpen: (route: string) => void
 }) {
-	const React = revenge.react.React
-	const { TableRowGroup, TableRow } = revenge.discord.design.Design
+	const { TableRowGroup, TableRow } = Design
 
 	const info = aiCoreInfo()
 	const [, redraw] = React.useReducer((n: number) => n + 1, 0)

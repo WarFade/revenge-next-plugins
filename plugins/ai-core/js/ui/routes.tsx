@@ -1,6 +1,9 @@
 import Debug from './pages/Debug'
 import Provider from './pages/Provider'
 import Usage from './pages/Usage'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.ai-core'
 
@@ -14,7 +17,7 @@ export const DEBUG_ROUTE = `${PREFIX}.debug`
  * whichever is actually there.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -24,8 +27,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	// Registered inside `onSettingsModulesLoaded`: it fires immediately when Discord's
 	// settings modules are already loaded, and waits when they are not. Registering
@@ -45,12 +47,12 @@ export function registerPages(): () => void {
 				useTitle: () => 'Usage and limits',
 				screen: { route: USAGE_ROUTE, getComponent: () => Usage },
 			}),
-			registerSettingsItem(DEBUG_ROUTE, {
+			...(DEBUG ? [registerSettingsItem(DEBUG_ROUTE, {
 				parent: null,
 				type: 'route',
 				useTitle: () => 'Debug',
 				screen: { route: DEBUG_ROUTE, getComponent: () => Debug },
-			}),
+			})] : []),
 		]
 
 		refreshSettingsUI()

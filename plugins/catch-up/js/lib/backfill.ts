@@ -24,6 +24,13 @@
  */
 
 import { debug } from './state'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as modulesFinders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as discordFinders from '@revenge-mod/discord/utils/modules/finders'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /** Discord's own maximum per request. */
 const PAGE_SIZE = 100
@@ -44,8 +51,7 @@ function getActions(): any {
 	// Route 1: by source path, confirmed present in the 343.11 bundle.
 	try {
 		const finders =
-			(revenge.discord.utils as any)?.modules?.finders ??
-			(revenge.discord.utils as any)?.finders
+			(discordFinders as any)
 		finders?.getModuleWithImportedPath?.(
 			'actions/MessageActionCreators.tsx',
 			(exports: any) => {
@@ -55,7 +61,7 @@ function getActions(): any {
 						: exports?.default
 				if (typeof host?.fetchMessages === 'function' && !actions) {
 					actions = host
-					console.log(
+					if (DEBUG) console.log(
 						'[CatchUp] backfill will use actions/MessageActionCreators.tsx',
 					)
 				}
@@ -68,8 +74,8 @@ function getActions(): any {
 	// Route 2: by shape, in case the path moves.
 	if (!actions) {
 		try {
-			const { lookupModule } = revenge.modules.finders
-			const { withProps } = revenge.modules.finders.filters
+			const { lookupModule } = modulesFinders
+			const { withProps } = filters
 			const [mod, id] = lookupModule(withProps('fetchMessages')) as [
 				any,
 				number | undefined,
@@ -80,7 +86,7 @@ function getActions(): any {
 					typeof mod?.fetchMessages === 'function' ? mod : mod?.default
 				if (typeof host?.fetchMessages === 'function') {
 					actions = host
-					console.log(`[CatchUp] backfill will use module ${id}`)
+					if (DEBUG) console.log(`[CatchUp] backfill will use module ${id}`)
 				}
 			}
 		} catch (error) {
@@ -89,9 +95,7 @@ function getActions(): any {
 	}
 
 	if (!actions) {
-		console.error(
-			'[CatchUp] no fetchMessages found; only cached messages can be summarised',
-		)
+		reportError('[CatchUp] no fetchMessages found; only cached messages can be summarised')
 	}
 
 	return actions
@@ -99,7 +103,7 @@ function getActions(): any {
 
 function rawMessages(channelId: string): any[] {
 	try {
-		const store = (revenge.discord.flux.Stores as any)?.MessageStore
+		const store = (Stores as any)?.MessageStore
 		const result = store?.getMessages?.(channelId)
 		return (
 			result?._array ??

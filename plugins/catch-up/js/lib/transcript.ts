@@ -12,6 +12,9 @@
  *    rather than worse.
  */
 
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
+
 export interface TranscriptLine {
 	author: string
 	content: string
@@ -97,7 +100,7 @@ export function buildTranscript(
 
 	let messages: any[]
 	try {
-		const store = (revenge.discord.flux.Stores as any)?.MessageStore
+		const store = (Stores as any)?.MessageStore
 		const result = store?.getMessages?.(channelId)
 		// `getMessages` returns a collection wrapper, not an array, and its shape has moved
 		// between builds. Take whichever of the two it is rather than assuming.
@@ -106,7 +109,7 @@ export function buildTranscript(
 			result?.toArray?.() ??
 			(Array.isArray(result) ? result : [])
 	} catch (error) {
-		console.error('[CatchUp] could not read MessageStore:', error)
+		reportError('[CatchUp] could not read MessageStore:', error)
 		return empty
 	}
 
@@ -149,7 +152,7 @@ export function buildTranscript(
 export function channelLabel(channelId: string): string {
 	try {
 		const channel = (
-			revenge.discord.flux.Stores as any
+			Stores as any
 		)?.ChannelStore?.getChannel?.(channelId)
 		if (!channel) return 'this channel'
 		// 1 is a DM, 3 a group DM; neither has a name worth printing with a hash in front.

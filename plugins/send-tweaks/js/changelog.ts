@@ -3,6 +3,27 @@ import type { ChangelogEntry } from '../../../shared/changelog'
 /** Newest first. Every public version gets an entry; see shared/changelog.tsx. */
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '0.9.2',
+		date: '2026-10-13',
+		title: 'Tidy-up',
+		changes: ['Errors now show in the Revenge plugin list instead of only the log, and the developer Debug page is gone from normal builds.'],
+	},
+	{
+		version: '0.9.1',
+		date: '2026-10-13',
+		title: 'Discord 350.4',
+		changes: ['Pop-up messages work on Discord 350.4. Before, showing one could crash Discord.'],
+	},
+	{
+		version: '0.9.0',
+		date: '2026-10-11',
+		title: 'Replace as you type',
+		changes: [
+			'New in Options: Replace as you type. Your text and link rules run on each word as you finish it, so you see the result in the message box before sending. Off until you turn it on.',
+			'Rules with placeholders, random picks or ^ and $ still run when you send, as before.',
+		],
+	},
+	{
 		version: '0.8.5',
 		date: '2026-10-09',
 		title: 'Small improvements',

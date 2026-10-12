@@ -1,5 +1,9 @@
 import { CORNHUB_SOUND } from './cornhubSound'
 import { getStorage, settings } from './state'
+import { showToast } from '../../../../shared/toast'
+import { FileModule } from '@revenge-mod/discord/native'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 /**
  * Cornhub: an easter egg that re-skins the Hub. Long-press the settings button at the top right of
@@ -33,9 +37,9 @@ export function sectionName(): string {
 
 function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({ key: 'PluginHubCornhubToast', content })
+		showToast(content, 'PluginHubCornhubToast')
 	} catch (error) {
-		console.error('[PluginHub] toast failed:', error)
+		reportError('[PluginHub] toast failed:', error)
 	}
 }
 
@@ -66,7 +70,7 @@ let nextKey = 0x0c0c_0000
 let written: Promise<unknown> | undefined
 
 function soundManager(): any {
-	const RN = revenge.react.ReactNative as any
+	const RN = ReactNative as any
 	try {
 		return (
 			RN.NativeModules?.DCDSoundManager ??
@@ -82,10 +86,10 @@ export function playIntro() {
 	if (!CORNHUB_SOUND) return
 	const manager = soundManager()
 	if (typeof manager?.prepare !== 'function') {
-		console.error('[PluginHub] DCDSoundManager is not reachable; the Cornhub intro stays silent')
+		reportError('[PluginHub] DCDSoundManager is not reachable; the Cornhub intro stays silent')
 		return
 	}
-	written ??= revenge.discord.native.FileModule.writeFile(
+	written ??= FileModule.writeFile(
 		'cache',
 		`sounds/${FILE}.mp3`,
 		CORNHUB_SOUND,
@@ -100,7 +104,7 @@ export function playIntro() {
 			const key = nextKey++
 			manager.prepare(SOUND_URL, 'media', key, (error: unknown, info: any) => {
 				if (error) {
-					console.error('[PluginHub] Cornhub intro would not load:', error)
+					reportError('[PluginHub] Cornhub intro would not load:', error)
 					return
 				}
 				manager.play(key)
@@ -114,5 +118,5 @@ export function playIntro() {
 				}, duration + 500)
 			})
 		})
-		.catch((error: unknown) => console.error('[PluginHub] Cornhub intro failed:', error))
+		.catch((error: unknown) => reportError('[PluginHub] Cornhub intro failed:', error))
 }

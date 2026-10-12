@@ -10,6 +10,12 @@ import { type SavedMedia, openSavedMedia } from '../lib/media'
 import { jumpToDeletedMessage } from '../lib/navigate'
 import { dangerIcon, rowIcon } from './icon'
 import { type DeletedMessage, removeFromLog } from './state'
+import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import * as ReactNative from 'react-native'
+import * as clipboardModule from '@revenge-mod/externals/react-native-clipboard'
+import { reportError } from '../../../../shared/report'
 
 const TAG = '[GhostLogNativeBeta]'
 const SHEET_KEY = 'GhostLogEntryActions'
@@ -23,7 +29,7 @@ function copy(text: string) {
 		// Revenge's bundled clipboard module first: React Native's own Clipboard left core long ago.
 		// Same order as Diagnostics' copy.
 		const Clipboard =
-			(revenge as any).externals?.ReactNativeClipboard?.Clipboard ?? (revenge.react.ReactNative as any)?.Clipboard
+			(clipboardModule as any)?.Clipboard ?? (ReactNative as any)?.Clipboard
 		if (typeof Clipboard?.setString !== 'function') throw new Error('no clipboard')
 		Clipboard.setString(text)
 		toast('Copied to clipboard')
@@ -36,28 +42,28 @@ let profileSheet: any
 function openUserProfile(userId: string) {
 	try {
 		if (!profileSheet) {
-			const mod = (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(
+			const mod = (finders as any).lookupModuleWithImportedPath(
 				'modules/user_profile/native/showUserProfileActionSheet.tsx',
 			)?.[0]
 			profileSheet = mod?.default
 		}
 		if (typeof profileSheet === 'function') return void profileSheet({ userId })
 	} catch (error) {
-		console.error(`${TAG} could not open profile:`, error)
+		reportError(`${TAG} could not open profile:`, error)
 	}
 	toast("Couldn't open the profile.")
 }
 
 function hide() {
 	try {
-		revenge.discord.actions.ActionSheetActionCreators.hideActionSheet(SHEET_KEY)
+		ActionSheetActionCreators.hideActionSheet(SHEET_KEY)
 	} catch {
 		/* already closed */
 	}
 }
 
 function open(Sheet: (props: any) => any, props: Record<string, unknown>) {
-	revenge.discord.actions.ActionSheetActionCreators.openLazy(Promise.resolve({ default: Sheet }), SHEET_KEY, props as any)
+	ActionSheetActionCreators.openLazy(Promise.resolve({ default: Sheet }), SHEET_KEY, props as any)
 }
 
 /** Closes the sheet first, so an alert or a navigation does not open underneath it. */
@@ -67,7 +73,7 @@ const run = (fn: () => void) => () => {
 }
 
 function Sheet({ title, children }: { title: string; children: any }) {
-	const { ActionSheet, BottomSheetTitleHeader, TableRowGroup } = revenge.discord.design.Design as any
+	const { ActionSheet, BottomSheetTitleHeader, TableRowGroup } = Design as any
 	return (
 		<ActionSheet>
 			<BottomSheetTitleHeader title={title} />
@@ -77,7 +83,7 @@ function Sheet({ title, children }: { title: string; children: any }) {
 }
 
 function DeletedSheet({ entry }: { entry: DeletedMessage }) {
-	const { TableRow } = revenge.discord.design.Design as any
+	const { TableRow } = Design as any
 	return (
 		<Sheet title={`Deleted message from ${entry.authorName}`}>
 			<TableRow
@@ -113,7 +119,7 @@ function DeletedSheet({ entry }: { entry: DeletedMessage }) {
 }
 
 function EditSheet({ record }: { record: EditRecord }) {
-	const { TableRow } = revenge.discord.design.Design as any
+	const { TableRow } = Design as any
 	const history = () =>
 		[...record.versions.map(version => version.content), record.current]
 			.map((text, index, all) => (index === all.length - 1 ? `Now: ${text}` : `${index + 1}: ${text}`))
@@ -152,7 +158,7 @@ function EditSheet({ record }: { record: EditRecord }) {
 }
 
 function MediaSheet({ item, items, index }: { item: SavedMedia; items: SavedMedia[]; index: number }) {
-	const { TableRow } = revenge.discord.design.Design as any
+	const { TableRow } = Design as any
 	const where = item.entry.guildName ? `${item.entry.channelName} in ${item.entry.guildName}` : 'a direct message'
 	return (
 		<Sheet title={`From ${item.entry.authorName} in ${where}`}>

@@ -1,6 +1,9 @@
 import { DEFAULTS } from '../defaults'
 import type { AiCoreStorage } from '../types'
 import { vaultStatus } from './vault'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export const TAG = '[AiCore]'
 
@@ -26,12 +29,12 @@ export function patch(value: Partial<AiCoreStorage>) {
 	try {
 		storage?.set(value)
 	} catch (error) {
-		console.error(`${TAG} failed to write storage:`, error)
+		reportError(`${TAG} failed to write storage:`, error)
 	}
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }
 
 /** Local calendar day, so the cap resets at the user's midnight rather than UTC's. */

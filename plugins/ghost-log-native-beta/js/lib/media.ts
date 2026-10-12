@@ -1,6 +1,14 @@
 import { callNativeMethod } from './native'
+import * as metroModule from '@revenge-mod/modules/metro'
 import { resolveMediaUri } from './richContent'
 import type { DeletedMessage } from '../ui/state'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import * as modulesFinders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as react from '@revenge-mod/react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const ID = 'bleelblep.ghost-log-native-beta'
 const TAG = '[GhostLogNativeBeta]'
@@ -108,7 +116,7 @@ export async function previewUri(item: SavedMedia): Promise<string | undefined> 
 		const uri = await callNativeMethod(`${ID}.getMediaThumb`, [item.localFile])
 		thumbs.set(item.localFile, typeof uri === 'string' && uri ? uri : null)
 	} catch (error) {
-		console.error(`${TAG} getMediaThumb failed:`, error)
+		reportError(`${TAG} getMediaThumb failed:`, error)
 		thumbs.set(item.localFile, null)
 	}
 	return thumbs.get(item.localFile) ?? undefined
@@ -116,7 +124,7 @@ export async function previewUri(item: SavedMedia): Promise<string | undefined> 
 
 /** React hook form of {@link previewUri}; undefined while loading or when there is none. */
 export function usePreviewUri(item: SavedMedia): string | undefined {
-	const { React } = revenge.react
+	const { React } = react
 	const [uri, setUri] = React.useState<string | undefined>()
 	React.useEffect(() => {
 		let live = true
@@ -137,7 +145,7 @@ const MEDIA_VIEWER_PATH = 'modules/media_viewer/native/components/openMediaModal
 const KNOWN_VIEWER_IDS = [7933]
 
 function metro(): any {
-	return (revenge.modules as any).metro
+	return (metroModule as any)
 }
 
 /**
@@ -161,11 +169,11 @@ function requireViewer(id: number): ((options: any) => void) | undefined {
 	try {
 		const exports = (globalThis as any).__r?.(id)
 		if (typeof exports?.openMediaModal === 'function') {
-			console.log(`${TAG} loaded Discord's media viewer (module ${id})`)
+			if (DEBUG) console.log(`${TAG} loaded Discord's media viewer (module ${id})`)
 			return exports.openMediaModal
 		}
 	} catch (error) {
-		console.error(`${TAG} loading module ${id} failed:`, error)
+		reportError(`${TAG} loading module ${id} failed:`, error)
 	}
 	return undefined
 }
@@ -182,7 +190,7 @@ let viewer: ((options: any) => void) | undefined
 function openMediaModal(): ((options: any) => void) | undefined {
 	if (viewer) return viewer
 	try {
-		const mod = (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(MEDIA_VIEWER_PATH)?.[0]
+		const mod = (finders as any).lookupModuleWithImportedPath(MEDIA_VIEWER_PATH)?.[0]
 		if (typeof mod?.openMediaModal === 'function') return (viewer = mod.openMediaModal)
 	} catch {
 		/* not loaded yet */
@@ -192,8 +200,8 @@ function openMediaModal(): ((options: any) => void) | undefined {
 	}
 	// Another build: search, requiring the constants module too, so only one module can match.
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = modulesFinders
+		const { withProps } = filters
 		const constants = (lookupModule as any)(withProps('MEDIA_MODAL_KEY'))?.[1]
 		if (typeof constants !== 'number') return undefined
 		const matches: number[] = []
@@ -206,9 +214,9 @@ function openMediaModal(): ((options: any) => void) | undefined {
 			if (looksLikeViewer(id, constants)) matches.push(id)
 		}
 		if (matches.length === 1) viewer = requireViewer(matches[0])
-		else console.error(`${TAG} media viewer search found ${matches.length} candidates; not loading any`)
+		else reportError(`${TAG} media viewer search found ${matches.length} candidates; not loading any`)
 	} catch (error) {
-		console.error(`${TAG} media viewer search failed:`, error)
+		reportError(`${TAG} media viewer search failed:`, error)
 	}
 	return viewer
 }
@@ -231,7 +239,7 @@ const VIEWER_WINDOW = 8
 export async function openSavedMedia(items: SavedMedia[], index: number): Promise<true | string> {
 	const open = openMediaModal()
 	if (!open) {
-		console.error(`${TAG} openMediaModal not found`)
+		reportError(`${TAG} openMediaModal not found`)
 		return "Discord's media viewer couldn't be loaded. Open any image in chat once, then try again."
 	}
 	const viewable = items.filter(item => item.kind !== 'file')
@@ -278,7 +286,7 @@ export async function openSavedMedia(items: SavedMedia[], index: number): Promis
 		})
 		return true
 	} catch (error) {
-		console.error(`${TAG} openMediaModal failed:`, error)
+		reportError(`${TAG} openMediaModal failed:`, error)
 		return `Discord's media viewer failed: ${String((error as any)?.message ?? error)}`
 	}
 }

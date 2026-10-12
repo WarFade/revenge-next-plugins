@@ -2,6 +2,14 @@ import { redactedAvatarUrl } from "../lib/alias"
 import { noteAvatarPatch, noteResolverSkipped } from "../lib/diagnostics"
 import { isEnabled, settings } from "../lib/state"
 import { findUserIdField, findUserObject } from "../lib/userArgs"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModuleWithImportedPath } from "@revenge-mod/discord/utils/modules/finders"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * The avatar beside a name, on every surface that isn't a message row.
@@ -99,7 +107,7 @@ function subjectOf(args: any[]): string | undefined {
 	if (!userId) return undefined
 
 	if (!settings().redactSelf) {
-		const { UserStore } = revenge.discord.flux.Stores as any
+		const { UserStore } = Stores as any
 		if (UserStore?.getCurrentUser?.()?.id === userId) return undefined
 	}
 
@@ -112,7 +120,7 @@ function patchOne(namespace: any, key: string, kind: "url" | "source", cleanups:
 	let pendingUserId: string | undefined
 
 	cleanups.push(
-		revenge.patcher.before(namespace, key, (args: any[]) => {
+		before(namespace, key, (args: any[]) => {
 			try {
 				pendingUserId = subjectOf(args)
 			} catch {
@@ -124,7 +132,7 @@ function patchOne(namespace: any, key: string, kind: "url" | "source", cleanups:
 	)
 
 	cleanups.push(
-		revenge.patcher.after(namespace, key, (ret: any) => {
+		after(namespace, key, (ret: any) => {
 			const userId = pendingUserId
 			pendingUserId = undefined
 
@@ -155,14 +163,14 @@ function patchOne(namespace: any, key: string, kind: "url" | "source", cleanups:
 
 				return ret
 			} catch (error) {
-				console.error("[ScreenshotRedactor] avatar hook failed:", error)
+				reportError("[ScreenshotRedactor] avatar hook failed:", error)
 			}
 
 			return ret
 		}),
 	)
 
-	console.log(`[ScreenshotRedactor] hooked avatar resolver: ${key}`)
+	if (DEBUG) console.log(`[ScreenshotRedactor] hooked avatar resolver: ${key}`)
 	noteAvatarPatch(key)
 }
 
@@ -183,7 +191,7 @@ function patchNamespace(mod: any, seen: Set<any>, cleanups: Array<() => void>): 
 			patchOne(host, key, kind, cleanups)
 			hooked++
 		} catch (error) {
-			console.error(`[ScreenshotRedactor] failed to patch ${key}:`, error)
+			reportError(`[ScreenshotRedactor] failed to patch ${key}:`, error)
 		}
 	}
 
@@ -200,15 +208,15 @@ export default function patchAvatar(): () => void {
 
 	try {
 		unsubscribes.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(MODULE_PATH, (mod: any) => {
+			getModuleWithImportedPath(MODULE_PATH, (mod: any) => {
 				if (patchNamespace(mod, seen, cleanups) === 0) {
-					console.error(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no avatar resolver`)
+					reportError(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no avatar resolver`)
 					noteResolverSkipped(MODULE_PATH)
 				}
 			}),
 		)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
+		reportError(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
 	}
 
 	// Fallback for a build that has moved the file. `getUserAvatarSource` is distinctive enough
@@ -216,8 +224,8 @@ export default function patchAvatar(): () => void {
 	// lookup + wait so that no `max` counter can swallow the subscription -- see
 	// `patches/displayName.ts`.
 	try {
-		const { lookupModules, waitForModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules, waitForModules } = finders
+		const { withProps } = filters
 		const filter = () => withProps("getUserAvatarSource")
 
 		const onModule = (mod: any) => {
@@ -227,7 +235,7 @@ export default function patchAvatar(): () => void {
 		for (const [exports] of lookupModules(filter())) onModule(exports)
 		unsubscribes.push(waitForModules(filter(), onModule))
 	} catch (error) {
-		console.error("[ScreenshotRedactor] avatar sweep failed:", error)
+		reportError("[ScreenshotRedactor] avatar sweep failed:", error)
 	}
 
 	return () => {

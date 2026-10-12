@@ -8,6 +8,9 @@
  * (docs/porting-rules.md rule 1).
  */
 
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+
 export interface IconDef {
 	id: string
 	name: string
@@ -171,8 +174,8 @@ function lazy<T>(resolve: () => T): () => T {
  */
 export const svgModule = lazy<any>(() => {
 	try {
-		const { lookupModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules } = finders
+		const { withProps } = filters
 		for (const [mod] of lookupModules(withProps('Svg', 'Path'))) {
 			const exports = mod as any
 			const Svg = exports?.default ?? exports?.Svg
@@ -187,8 +190,8 @@ export const svgModule = lazy<any>(() => {
 /** The `SvgXml` component, for pasted markup. */
 export const svgXml = lazy<any>(() => {
 	try {
-		const { lookupModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules } = finders
+		const { withProps } = filters
 		for (const [mod] of lookupModules(withProps('SvgXml'))) {
 			const exports = mod as any
 			if (typeof exports?.SvgXml === 'function') return exports.SvgXml

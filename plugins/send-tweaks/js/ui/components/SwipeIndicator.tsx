@@ -10,6 +10,11 @@ import {
 	swipeDrag,
 	useSwipeState,
 } from '../../lib/swipe'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../../shared/report'
 
 const BLURPLE = '#5865F2'
 const GREEN = '#23A55A'
@@ -92,7 +97,7 @@ function StopLabel({
 	idle,
 	active,
 }: { top: number; right: number; opacity: any; lit: boolean; colour: string; idle: string; active: string }) {
-	const { Animated, Text } = revenge.react.ReactNative
+	const { Animated, Text } = ReactNative
 	return (
 		<Animated.View
 			style={{
@@ -121,8 +126,8 @@ function StopLabel({
  */
 function getPortal(): any {
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		const mod = lookupModule<any>(withProps('Portal', 'PortalHost', 'PortalProvider'))?.[0]
 		return mod?.Portal ?? mod?.default?.Portal
 	} catch {
@@ -139,14 +144,13 @@ let Boundary: any
  */
 function getBoundary(): any {
 	if (Boundary) return Boundary
-	const React = revenge.react.React
 	Boundary = class extends React.Component<{ children?: any }, { failed: boolean }> {
 		state = { failed: false }
 		static getDerivedStateFromError() {
 			return { failed: true }
 		}
 		componentDidCatch(error: unknown) {
-			console.error(`${TAG} swipe capsule failed, hold-and-swipe still works without it:`, error)
+			reportError(`${TAG} swipe capsule failed, hold-and-swipe still works without it:`, error)
 		}
 		render() {
 			return this.state.failed ? null : this.props.children
@@ -176,8 +180,7 @@ function Capsule({
 }: { Icon?: any; anchor: Anchor; armed: boolean; stop: Stop; actions: SwipeActions; buttonColour?: unknown; buttonRadius?: number }) {
 	const PREVIEW_DISTANCE = previewDistance(actions)
 	const both = actions.preview && actions.send
-	const React = revenge.react.React
-	const { Animated, Dimensions, Text, View } = revenge.react.ReactNative
+	const { Animated, Dimensions, Text, View } = ReactNative
 
 	const grow = React.useRef(new Animated.Value(0)).current
 	React.useEffect(() => {

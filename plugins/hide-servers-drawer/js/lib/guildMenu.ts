@@ -1,12 +1,15 @@
 // getGuildsBarGuildMenuItems is a named function, findable directly via withName -- takes a
 // guildId, returns the real stock long-press menu, each item shaped { IconComponent, label, action }.
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+
 let menuItemsFn: ((guildId: string) => any[]) | undefined
 
 function resolveMenuItemsFn() {
 	if (menuItemsFn !== undefined) return menuItemsFn
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withName } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withName } = filters
 		menuItemsFn = lookupModule<any>(withName("getGuildsBarGuildMenuItems"))?.[0]
 	} catch {
 		menuItemsFn = undefined
@@ -24,8 +27,8 @@ let actionSheetFn: ((opts: Record<string, unknown>) => void) | undefined
 function resolveActionSheetFn() {
 	if (actionSheetFn !== undefined) return actionSheetFn
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetFn = lookupModule<any>(withProps("showSimpleActionSheet"))?.[0]?.showSimpleActionSheet
 	} catch {
 		actionSheetFn = undefined

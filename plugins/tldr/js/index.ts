@@ -17,6 +17,7 @@ import { registerPages } from './ui/routes'
 import type { AiHandle, TldrStorage } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { TldrStorage }
@@ -28,6 +29,10 @@ export default plugin<{ jsonStorage: TldrStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -49,18 +54,18 @@ export default plugin<{ jsonStorage: TldrStorage }>({
 			// Only the in-memory mirror: the saved summaries are meant to outlive a restart.
 			releaseMemory()
 		})
-		if (!ai) console.error(`${TAG} AI Core did not decorate this plugin; TL;DR cannot summarise`)
+		if (!ai) reportError(`${TAG} AI Core did not decorate this plugin; TL;DR cannot summarise`)
 
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error(`${TAG} failed to register settings pages:`, error)
+			reportError(`${TAG} failed to register settings pages:`, error)
 		}
 
 		try {
 			cleanup(patchMessageSheet())
 		} catch (error) {
-			console.error(`${TAG} failed to add the long-press row:`, error)
+			reportError(`${TAG} failed to add the long-press row:`, error)
 		}
 	},
 

@@ -3,6 +3,10 @@ import { getStorage, useSettings } from '../../lib/state'
 import { transform } from '../../lib/transform'
 import { FieldGroup } from '../fieldGroup'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 const EXAMPLES = [
 	'https://youtu.be/dQw4w9WgXcQ?si=Abc123xyz',
@@ -21,11 +25,9 @@ const EXAMPLES = [
  */
 export default function TryIt() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput } = Design
 
 	// Subscribing re-renders the preview when a setting or rule changes elsewhere.
 	const storage = getStorage()

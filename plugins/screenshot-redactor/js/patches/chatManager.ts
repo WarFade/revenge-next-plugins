@@ -2,6 +2,13 @@ import { applyBatch, isReplaying, noteCleared } from "../lib/chatRows"
 import { count, noteChatManagerPatch } from "../lib/diagnostics"
 import { redactRows } from "../lib/rowSchema"
 import { currentUserId, isEnabled, settings } from "../lib/state"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { before } from "@revenge-mod/patcher"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * Redaction at the JS/native boundary.
@@ -41,7 +48,7 @@ import { currentUserId, isEnabled, settings } from "../lib/state"
  */
 function findChatManager(): any {
 	const candidates = [
-		() => (revenge.react.ReactNative as any)?.NativeModules?.DCDChatManager,
+		() => (ReactNative as any)?.NativeModules?.DCDChatManager,
 		() => (globalThis as any)?.nativeModuleProxy?.DCDChatManager,
 		() => (globalThis as any)?.__turboModuleProxy?.("DCDChatManager"),
 	]
@@ -73,8 +80,8 @@ function findChatManager(): any {
  */
 function subscribeForChatManager(): () => void {
 	try {
-		const { getModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { getModules } = finders
+		const { withProps } = filters
 
 		return getModules(
 			withProps("DCDChatManager"),
@@ -89,7 +96,7 @@ function subscribeForChatManager(): () => void {
 			{ max: 5 },
 		)
 	} catch (error) {
-		console.error("[ScreenshotRedactor] could not subscribe for DCDChatManager:", error)
+		reportError("[ScreenshotRedactor] could not subscribe for DCDChatManager:", error)
 		return () => {}
 	}
 }
@@ -119,7 +126,7 @@ export default function patchChatManager(): () => void {
 	let unsubscribe: (() => void) | undefined
 
 	if (!ensureChatManagerPatched()) {
-		console.log("[ScreenshotRedactor] DCDChatManager not directly reachable; asking Metro for it")
+		if (DEBUG) console.log("[ScreenshotRedactor] DCDChatManager not directly reachable; asking Metro for it")
 		noteChatManagerPatch("waiting on Metro")
 		unsubscribe = subscribeForChatManager()
 	}
@@ -145,7 +152,7 @@ export default function patchChatManager(): () => void {
 function install(manager: any) {
 
 	cleanups.push(
-		revenge.patcher.before(manager, "updateRows", (args: any[]) => {
+		before(manager, "updateRows", (args: any[]) => {
 			try {
 				if (!isReplaying()) {
 					const tag = args?.[0]
@@ -186,7 +193,7 @@ function install(manager: any) {
 			} catch (error) {
 				// Never let this take the chat down: on any failure the original JSON goes
 				// through untouched, which is a leak rather than a broken client.
-				console.error("[ScreenshotRedactor] updateRows hook failed:", error)
+				reportError("[ScreenshotRedactor] updateRows hook failed:", error)
 			}
 
 			// A before-hook must return the args array, and outside the try so it survives a
@@ -197,13 +204,13 @@ function install(manager: any) {
 
 	if (typeof manager.clearRows === "function") {
 		cleanups.push(
-			revenge.patcher.before(manager, "clearRows", (args: any[]) => {
+			before(manager, "clearRows", (args: any[]) => {
 				try {
 					// Native sets `rows = null` here, so the next batch will be a full sync. The
 					// mirror has to follow or it will start splicing into a stale list.
 					if (!isReplaying() && typeof args?.[0] === "number") noteCleared(args[0])
 				} catch (error) {
-					console.error("[ScreenshotRedactor] clearRows hook failed:", error)
+					reportError("[ScreenshotRedactor] clearRows hook failed:", error)
 				}
 
 				return args
@@ -211,6 +218,6 @@ function install(manager: any) {
 		)
 	}
 
-	console.log("[ScreenshotRedactor] DCDChatManager hooked")
+	if (DEBUG) console.log("[ScreenshotRedactor] DCDChatManager hooked")
 	noteChatManagerPatch("patched")
 }

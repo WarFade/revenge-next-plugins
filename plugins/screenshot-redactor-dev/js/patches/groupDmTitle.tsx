@@ -2,6 +2,14 @@ import { noteNamePatch } from "../lib/diagnostics"
 import { getStorage, isEnabled, redactOptions, settings, withOriginalResolution } from "../lib/state"
 import { redactedName } from "../lib/alias"
 import { usePresentationRefresh } from "../lib/refreshSignal"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import { cloneElement, createElement } from "react"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * The group-DM header, which redacted correctly but only after a screen change.
@@ -43,8 +51,8 @@ let selectedChannel: any
 function channelNameModule(): any {
 	if (channelNames) return channelNames
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		const [mod] = lookupModule(withProps("computeChannelName")) as [any, number | undefined]
 		const host = typeof mod?.computeChannelName === "function" ? mod : mod?.default
 		if (typeof host?.computeChannelName === "function") channelNames = host
@@ -60,7 +68,7 @@ function GroupDmTitle({ element, channelId, title }: { element: any; channelId: 
 	usePresentationRefresh()
 
 	try {
-		const { ChannelStore, UserStore, RelationshipStore } = revenge.discord.flux.Stores as any
+		const { ChannelStore, UserStore, RelationshipStore } = Stores as any
 		const channel = ChannelStore?.getChannel?.(channelId)
 		const names = channelNameModule()
 		if (channel?.type !== 3 || channel.name || !names) return element
@@ -76,7 +84,7 @@ function GroupDmTitle({ element, channelId, title }: { element: any; channelId: 
 		if (typeof fresh !== "string" || fresh === element?.props?.title) return element
 
 		const accessible = element?.props?.accessibleTitle
-		return revenge.react.React.cloneElement(element, {
+		return cloneElement(element, {
 			title: fresh,
 			accessibleTitle: typeof accessible === "string" ? accessible.split(title).join(fresh) : fresh,
 		})
@@ -96,14 +104,14 @@ export default function patchGroupDmTitle(): () => void {
 		seen.add(host.renderChannelTitle)
 
 		cleanups.push(
-			revenge.patcher.before(host, "renderChannelTitle", (args: any[]) => {
+			before(host, "renderChannelTitle", (args: any[]) => {
 				pending = { title: args?.[0], options: args?.[1] }
 				// Must return the args array -- see docs/porting-rules.md rule 2.
 				return args
 			}),
 		)
 		cleanups.push(
-			revenge.patcher.after(host, "renderChannelTitle", (ret: any) => {
+			after(host, "renderChannelTitle", (ret: any) => {
 				const call = pending
 				pending = undefined
 				try {
@@ -111,18 +119,18 @@ export default function patchGroupDmTitle(): () => void {
 					// A single DM carries `userId`, a server channel `guildId`; a group DM neither.
 					if (!ret || typeof call?.title !== "string" || options?.userId || options?.guildId) return ret
 
-					if (!selectedChannel) selectedChannel = (revenge.discord.flux.Stores as any).SelectedChannelStore
+					if (!selectedChannel) selectedChannel = (Stores as any).SelectedChannelStore
 					const channelId = selectedChannel?.getChannelId?.()
 					if (typeof channelId !== "string") return ret
 
-					return revenge.react.React.createElement(GroupDmTitle, {
+					return createElement(GroupDmTitle, {
 						key: ret.key ?? undefined,
 						element: ret,
 						channelId,
 						title: call.title,
 					})
 				} catch (error) {
-					console.error("[ScreenshotRedactor] group DM title hook failed:", error)
+					reportError("[ScreenshotRedactor] group DM title hook failed:", error)
 					return ret
 				}
 			}),
@@ -130,19 +138,19 @@ export default function patchGroupDmTitle(): () => void {
 		// Recorded after patching: the slot now holds the patcher's proxy (see displayName.ts).
 		seen.add(host.renderChannelTitle)
 
-		console.log("[ScreenshotRedactor] hooked renderChannelTitle for group DM headers")
+		if (DEBUG) console.log("[ScreenshotRedactor] hooked renderChannelTitle for group DM headers")
 		noteNamePatch("renderChannelTitle (group DM header)")
 	}
 
 	try {
-		const { lookupModules, waitForModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules, waitForModules } = finders
+		const { withProps } = filters
 		// Paired with `renderGroupDMIcon` so an unrelated `renderChannelTitle` cannot match.
 		const filter = () => withProps("renderChannelTitle", "renderGroupDMIcon")
 		for (const [exports] of lookupModules(filter())) install(exports)
 		cleanups.push(waitForModules(filter(), (exports: any) => install(exports)))
 	} catch (error) {
-		console.error("[ScreenshotRedactor] could not look for renderChannelTitle:", error)
+		reportError("[ScreenshotRedactor] could not look for renderChannelTitle:", error)
 	}
 
 	return () => {

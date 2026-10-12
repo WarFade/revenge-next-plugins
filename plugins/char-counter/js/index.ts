@@ -3,6 +3,7 @@ import { patchCounter } from './lib/counter'
 import Settings from './ui/Settings'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { setReporter } from '../../../shared/report'
 
 export interface CharCounterStorage {
 	/** `count`: "45 characters". `limit`: "45 / 4,000 characters". `left`: "3,955 characters left". Past the limit: "N characters over the limit". */
@@ -31,6 +32,10 @@ export default plugin<{ jsonStorage: CharCounterStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// The changelog: clock icon on the settings page, "What's new" after an update.
 		cleanup(setupChangelog({ plugin, jsonStorage }, CHANGELOG))
 		// Kept from subscribe, not read off `cache`: the settings page can write through another

@@ -1,5 +1,8 @@
 import { getModuleByPath } from '../../../../shared/modules'
 import { isLoggedId } from '../ui/state'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
 
 /**
  * Which messages are deleted, and getting a kept one redrawn.
@@ -43,7 +46,7 @@ export function isDeletedMessage(message: any): boolean {
 let channelMessages: any
 
 export function watchChannelMessages(): () => void {
-	const { withProps } = revenge.modules.finders.filters
+	const { withProps } = filters
 	return getModuleByPath(
 		'lib/ChannelMessages.tsx',
 		withProps('getOrCreate', 'commit'),
@@ -95,14 +98,14 @@ export function redrawKept(channelId: string, messageId: string): boolean {
 		// After the current dispatch finishes: emitting from inside it re-enters React mid-render.
 		queueMicrotask(() => {
 			try {
-				;(revenge.discord.flux.Stores as any).MessageStore?.emitChange?.()
+				;(Stores as any).MessageStore?.emitChange?.()
 			} catch (error) {
-				console.error('[GhostLogNativeBeta] redraw emit failed:', error)
+				reportError('[GhostLogNativeBeta] redraw emit failed:', error)
 			}
 		})
 		return true
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] redraw failed:', error)
+		reportError('[GhostLogNativeBeta] redraw failed:', error)
 		return false
 	}
 }

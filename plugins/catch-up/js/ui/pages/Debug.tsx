@@ -1,17 +1,20 @@
+import { FieldRow } from '../fieldGroup'
 import { DEFAULTS } from '../../defaults'
 import { registryStatus } from '../../lib/commands'
 import { getStorage } from '../../lib/state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { CatchUpStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** Developer tools only. Reports outcomes, never intentions -- porting rule 3. */
 export default function Debug() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, Slider } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, Slider } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }
@@ -33,10 +36,8 @@ export default function Debug() {
 						/>
 					</TableRowGroup>
 
-					<TableRowGroup
-						title={`AI timeout — ${Math.round(Number(s.aiTimeoutSeconds) || DEFAULTS.aiTimeoutSeconds)} seconds`}
-					>
-						<View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+					<TableRowGroup>
+						<FieldRow label={`AI timeout — ${Math.round(Number(s.aiTimeoutSeconds) || DEFAULTS.aiTimeoutSeconds)} seconds`}>
 							<Text color="text-muted" variant="text-sm/normal">
 								How long to wait for AI Core before giving up with "No answer
 								came back". Raise it if summaries of long stretches time out on a
@@ -51,7 +52,7 @@ export default function Debug() {
 									set({ aiTimeoutSeconds: Math.round(value) })
 								}
 							/>
-						</View>
+						</FieldRow>
 					</TableRowGroup>
 
 					<TableRowGroup title="Status" hasIcons>

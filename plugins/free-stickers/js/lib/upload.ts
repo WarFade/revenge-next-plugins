@@ -9,10 +9,13 @@
  */
 
 import { TAG } from './state'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as native from '@revenge-mod/modules/native'
+import { reportError } from '../../../../shared/report'
 
 function token(): string | undefined {
 	try {
-		const stores = revenge.discord.flux.Stores as any
+		const stores = Stores as any
 		const auth = stores?.AuthenticationStore ?? stores?.AuthStore
 		const value = auth?.getToken?.()
 		return typeof value === 'string' && value ? value : undefined
@@ -22,7 +25,7 @@ function token(): string | undefined {
 }
 
 export function toGif(stickerId: string, url: string, size: number): Promise<string> {
-	return (revenge.modules.native as any).callNativeMethod('bleelblep.free-stickers.toGif', [stickerId, url, size])
+	return (native as any).callNativeMethod('bleelblep.free-stickers.toGif', [stickerId, url, size])
 }
 
 /** Discord's reply target, from `sendStickers`' options, in the shape the REST API wants. */
@@ -66,7 +69,7 @@ export async function uploadGif(channelId: string, path: string, name: string, o
 		} catch {
 			/* no body */
 		}
-		console.error(`${TAG} upload failed:`, response.status, detail)
+		reportError([`${TAG} upload failed:`, response.status, detail].join(' '))
 		throw new Error(response.status === 403 ? "You can't attach files here" : `Upload failed (${response.status})`)
 	}
 }

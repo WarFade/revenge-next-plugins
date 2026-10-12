@@ -1,14 +1,16 @@
 import { useChangelog } from '../../../../shared/changelog'
 import { rowIcon } from '../../../../shared/ui/icon'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** No options: this page exists for the changelog (clock icon, "What's new" after an update). */
 export default function Settings() {
 	useChangelog()
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow } = revenge.discord.design
-		.Design as any
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableRow } = Design as any
 
 	return (
 		<Page>

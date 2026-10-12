@@ -1,5 +1,12 @@
 import { isEmpty, isFolderHidden, isHidden } from "../lib/hidden"
 import { store as sortedGuildStore, unfiltered } from "./sortedGuilds"
+import { getModuleWithImportedPath } from "@revenge-mod/discord/utils/modules/finders"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 // The checkgate for "this plugin must never shape what Discord persists".
 //
@@ -160,7 +167,7 @@ export default function patchSaveGuildFolders(): () => void {
 		patched = true
 		try {
 			cleanups.push(
-				revenge.patcher.before(host, "saveGuildFolders", (args: any[]) => {
+				before(host, "saveGuildFolders", (args: any[]) => {
 					try {
 						if (!isEmpty() && Array.isArray(args?.[0])) {
 							args[0] = repair(args[0])
@@ -173,9 +180,9 @@ export default function patchSaveGuildFolders(): () => void {
 					return args
 				}),
 			)
-			console.log("[HideServersDrawer] saveGuildFolders guard installed")
+			if (DEBUG) console.log("[HideServersDrawer] saveGuildFolders guard installed")
 		} catch (error) {
-			console.error("[HideServersDrawer] failed to patch saveGuildFolders:", error)
+			reportError("[HideServersDrawer] failed to patch saveGuildFolders:", error)
 		}
 	}
 
@@ -184,22 +191,22 @@ export default function patchSaveGuildFolders(): () => void {
 	// on it, confirmed by 337.10 disassembly).
 	try {
 		unsubscribes.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(MODULE_PATH, (mod: any) => patchHost(mod)),
+			getModuleWithImportedPath(MODULE_PATH, (mod: any) => patchHost(mod)),
 		)
 	} catch (error) {
-		console.error(`[HideServersDrawer] imported-path lookup for ${MODULE_PATH} failed:`, error)
+		reportError(`[HideServersDrawer] imported-path lookup for ${MODULE_PATH} failed:`, error)
 	}
 
 	// Fallback for a build that moved the file: a plain prop sweep, split into lookup +
 	// wait so no shared `max` counter can swallow the subscription (rule 3).
 	try {
-		const { lookupModules, waitForModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules, waitForModules } = finders
+		const { withProps } = filters
 
 		for (const [exports] of lookupModules(withProps("saveGuildFolders"))) patchHost(exports)
 		unsubscribes.push(waitForModules(withProps("saveGuildFolders"), (exports: any) => patchHost(exports)))
 	} catch (error) {
-		console.error("[HideServersDrawer] saveGuildFolders sweep failed:", error)
+		reportError("[HideServersDrawer] saveGuildFolders sweep failed:", error)
 	}
 
 	return () => {

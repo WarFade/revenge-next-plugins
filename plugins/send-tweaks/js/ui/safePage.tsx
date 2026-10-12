@@ -7,6 +7,10 @@
  * one wrapper, kept, so the navigator sees the same component on every render.
  */
 
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
 const TAG = '[SendTweaks]'
 
 let Boundary: any
@@ -14,19 +18,18 @@ const wrapped = new Map<any, any>()
 
 function getBoundary(): any {
 	if (Boundary) return Boundary
-	const React = revenge.react.React
 	Boundary = class extends React.Component<{ children?: any; name: string }, { error: unknown }> {
 		state = { error: undefined as unknown }
 		static getDerivedStateFromError(error: unknown) {
 			return { error: error ?? new Error('Unknown error') }
 		}
 		componentDidCatch(error: unknown) {
-			console.error(`${TAG} ${this.props.name} page failed to render:`, error)
+			reportError(`${TAG} ${this.props.name} page failed to render:`, error)
 		}
 		render() {
 			if (this.state.error === undefined) return this.props.children
 			// Only React Native's own parts here: Discord's may be what failed.
-			const { View, Text } = revenge.react.ReactNative
+			const { View, Text } = ReactNative
 			const message = this.state.error instanceof Error ? this.state.error.message : String(this.state.error)
 			return (
 				<View style={{ padding: 16, gap: 8 }}>

@@ -6,6 +6,10 @@ import { dangerIcon } from '../icon'
 import { Empty } from '../native'
 import { useBottomPadding } from '../safeArea'
 import { openEditSheet } from '../sheets'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 type Filter = 'all' | 'servers' | 'dms'
 
@@ -49,10 +53,10 @@ function toRows(records: EditRecord[]): Row[] {
  * with the version it replaced above it in muted text and the older ones behind "Show older".
  */
 export default function Edits() {
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { FlatList, RefreshControl, View } = revenge.react.ReactNative as any
-	const { TableRowGroup, TableRow, Text } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { React } = react
+	const { FlatList, RefreshControl, View } = ReactNative as any
+	const { TableRowGroup, TableRow, Text } = Design as any
 
 	const records = useEdits()
 	const bottomPadding = useBottomPadding()

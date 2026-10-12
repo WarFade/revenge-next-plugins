@@ -26,6 +26,7 @@ import { OPTIONS_ROUTE, registerPages } from './ui/routes'
 import type { AiHandle, CatchUpStorage } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { CatchUpStorage }
@@ -37,6 +38,10 @@ export default plugin<{ jsonStorage: CatchUpStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -58,31 +63,26 @@ export default plugin<{ jsonStorage: CatchUpStorage }>({
 		if (!ai) {
 			// A required dependency that is somehow absent is worth one loud line: everything
 			// below still installs, and the settings page explains what is missing.
-			console.error(
-				'[CatchUp] AI Core did not decorate this plugin; /catchup cannot summarise',
-			)
+			reportError('[CatchUp] AI Core did not decorate this plugin; /catchup cannot summarise')
 		}
 
 		try {
 			ai?.setSettingsRoute?.(OPTIONS_ROUTE)
 		} catch (error) {
-			console.error(
-				'[CatchUp] could not register a settings route with AI Core:',
-				error,
-			)
+			reportError('[CatchUp] could not register a settings route with AI Core:', error)
 		}
 
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error('[CatchUp] failed to register settings pages:', error)
+			reportError('[CatchUp] failed to register settings pages:', error)
 		}
 
 		try {
 			// Returns immediately; the command itself lands when Discord's command module does.
 			cleanup(installCommand())
 		} catch (error) {
-			console.error('[CatchUp] failed to register /catchup:', error)
+			reportError('[CatchUp] failed to register /catchup:', error)
 		}
 	},
 

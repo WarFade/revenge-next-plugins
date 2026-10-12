@@ -1,5 +1,6 @@
 import { PILL_SELECTED_HEIGHT, PILL_WIDTH } from "../layout"
 import { selectedPill } from "../theme"
+import * as ReactNative from "react-native"
 
 /**
  * Stock's left-edge indicator for the *selected* row. Positioned at left: 0 inside a full
@@ -11,7 +12,7 @@ import { selectedPill } from "../theme"
  */
 export default function Pill({ rowHeight, selected }: { rowHeight: number; selected: boolean }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { View } = revenge.react.ReactNative
+	const { View } = ReactNative
 
 	if (!selected) return null
 

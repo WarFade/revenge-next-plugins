@@ -12,6 +12,9 @@
  */
 
 import { debug, TAG } from './state'
+import * as native from '@revenge-mod/modules/native'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
 
 const ID = 'bleelblep.ai-core'
 
@@ -60,7 +63,7 @@ let current: VaultStatus = OFFLINE
 const listeners = new Set<() => void>()
 
 function call(method: string, args: unknown[] = []): Promise<any> {
-	return (revenge.modules.native as any).callNativeMethod(`${ID}.${method}`, args)
+	return (native as any).callNativeMethod(`${ID}.${method}`, args)
 }
 
 function accept(raw: unknown): VaultStatus {
@@ -68,7 +71,7 @@ function accept(raw: unknown): VaultStatus {
 		const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
 		current = { ...OFFLINE, ...parsed, native: true }
 	} catch (error) {
-		console.error(`${TAG} unreadable vault status:`, error)
+		reportError(`${TAG} unreadable vault status:`, error)
 	}
 	for (const listener of listeners) listener()
 	return current
@@ -78,7 +81,7 @@ async function statusCall(method: string, args: unknown[] = []): Promise<VaultSt
 	try {
 		return accept(await call(method, args))
 	} catch (error) {
-		console.error(`${TAG} native ${method} failed:`, error)
+		reportError(`${TAG} native ${method} failed:`, error)
 		current = OFFLINE
 		for (const listener of listeners) listener()
 		return current
@@ -114,7 +117,7 @@ export async function importLegacy(
 		await refreshStatus()
 		return moved === true
 	} catch (error) {
-		console.error(`${TAG} legacy key import failed:`, error)
+		reportError(`${TAG} legacy key import failed:`, error)
 		return false
 	}
 }
@@ -148,7 +151,6 @@ export async function nativeRequest(
 
 /** React hook: re-renders on every status change. */
 export function useVaultStatus(): VaultStatus {
-	const React = revenge.react.React
 	const [, force] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => {
 		listeners.add(force)
@@ -227,7 +229,6 @@ export function describeBalance(balance: Balance | undefined): string {
  * changes. `refresh()` forces a new request (a tap on the row).
  */
 export function useBalance(): { balance: Balance | undefined; refresh: () => void } {
-	const React = revenge.react.React
 	const status = useVaultStatus()
 	const [balance, setBalance] = React.useState<Balance | undefined>(lastBalance?.value)
 	const load = (force: boolean) => {

@@ -14,6 +14,11 @@ import { showToast } from '../../../shared/toast'
 import { CHANGELOG } from './changelog'
 import Settings from './ui/pages/Settings'
 import type { GhostLogSettings } from './types'
+import * as flux from '@revenge-mod/discord/flux'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError, setReporter } from '../../../shared/report'
+
+const DEBUG: boolean = false
 
 const TAG = '[GhostLogNativeBeta]'
 const ID = 'bleelblep.ghost-log-native-beta'
@@ -25,7 +30,7 @@ function settings(): GhostLogSettings {
 }
 
 function stores() {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 function describe(message: any, channelId: string) {
@@ -62,14 +67,14 @@ async function capture(entry: Record<string, unknown>, toast: boolean, authorNam
 				const saved = JSON.parse(result)
 				updateCachedMedia(String(entry.id), saved.attachments, saved.embeds)
 			} catch (error) {
-				console.error(`${TAG} saved media reply unreadable:`, error)
+				reportError(`${TAG} saved media reply unreadable:`, error)
 			}
 		}
 		const cfg = settings()
 		if (cfg.autoBackupEnabled) scheduleBackup(cfg)
 		if (toast) showToast(`Message deleted by ${authorName} in ${channelName}`, `${ID}:${entry.id}`)
 	} catch (error) {
-		console.error(`${TAG} capture bridge failed:`, error)
+		reportError(`${TAG} capture bridge failed:`, error)
 	}
 }
 
@@ -87,12 +92,12 @@ function scheduleBackup(cfg: GhostLogSettings) {
 		// checked. Logging success unconditionally is how every auto-backup failing went unnoticed.
 		callNativeMethod(`${ID}.exportBackup`, [path])
 			.then(result => {
-				if (result) console.log(`${TAG} auto backup written to ${result.path} (${result.count} entries)`)
-				else console.error(`${TAG} auto backup failed: could not write ${path} (see Backup > storage status)`)
+				if (result) { if (DEBUG) console.log(`${TAG} auto backup written to ${result.path} (${result.count} entries)`) }
+				else reportError(`${TAG} auto backup failed: could not write ${path} (see Backup > storage status)`)
 				// The storage row on the Backup page reads lastWriteError; refresh it either way.
 				void refreshStorageStatus()
 			})
-			.catch(error => console.error(`${TAG} auto backup failed:`, error))
+			.catch(error => reportError(`${TAG} auto backup failed:`, error))
 	}, 2000)
 }
 
@@ -287,6 +292,10 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -295,7 +304,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			return
 		}
 
-		console.log(`${TAG} JS started`)
+		if (DEBUG) console.log(`${TAG} JS started`)
 		settingsStorage = api.jsonStorage
 		setSettingsStorage(api.jsonStorage)
 
@@ -326,17 +335,17 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			// Loaded at start rather than on first visit: the chat needs it to draw edit history.
 			void refreshEdits()
 		}
-		bootstrap().catch(error => console.error(`${TAG} bootstrap failed:`, error))
+		bootstrap().catch(error => reportError(`${TAG} bootstrap failed:`, error))
 
 		try {
 			api.cleanup(registerPages())
 		} catch (error) {
-			console.error(`${TAG} failed to register settings pages:`, error)
+			reportError(`${TAG} failed to register settings pages:`, error)
 		}
 		try {
 			api.cleanup(setupChangelog(api, CHANGELOG, { latestOnly: true }))
 		} catch (error) {
-			console.error(`${TAG} failed to set up the changelog:`, error)
+			reportError(`${TAG} failed to set up the changelog:`, error)
 		}
 
 		// A restored message is still an ordinary SENT message to the rest of the client, so
@@ -344,14 +353,14 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 		try {
 			api.cleanup(patchBlockGhostActions(settings))
 		} catch (error) {
-			console.error(`${TAG} failed to guard deleted-message actions:`, error)
+			reportError(`${TAG} failed to guard deleted-message actions:`, error)
 		}
 
 		// One place for a single delete: log it, then decide whether it stays on screen. Kept messages
 		// are held back by returning nothing, so no store ever removes them -- see lib/deleted.ts for
 		// why this replaced the fake MESSAGE_UPDATE. Anything that goes wrong lets the delete through:
 		// the worst case is Discord's normal behaviour.
-		const { onFluxEventDispatched } = revenge.discord.flux
+		const { onFluxEventDispatched } = flux
 		api.cleanup(
 			onFluxEventDispatched('MESSAGE_DELETE', (payload: any) => {
 				try {
@@ -365,7 +374,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 					redrawKept(channelId, messageId)
 					return undefined
 				} catch (error) {
-					console.error(`${TAG} MESSAGE_DELETE handler failed:`, error)
+					reportError(`${TAG} MESSAGE_DELETE handler failed:`, error)
 				}
 				return payload
 			}),
@@ -373,7 +382,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 				try {
 					handleEdit(payload)
 				} catch (error) {
-					console.error(`${TAG} MESSAGE_UPDATE handler failed:`, error)
+					reportError(`${TAG} MESSAGE_UPDATE handler failed:`, error)
 				}
 				return payload
 			}),
@@ -381,7 +390,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 				try {
 					for (const id of payload.ids ?? []) handle(payload.channelId, id)
 				} catch (error) {
-					console.error(`${TAG} MESSAGE_DELETE_BULK handler failed:`, error)
+					reportError(`${TAG} MESSAGE_DELETE_BULK handler failed:`, error)
 				}
 				return payload
 			}),
@@ -402,12 +411,12 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 			try {
 				api.cleanup(patchVisuals(settings))
 			} catch (error) {
-				console.error(`${TAG} failed to start deferred visual patching:`, error)
+				reportError(`${TAG} failed to start deferred visual patching:`, error)
 			}
 			try {
 				api.cleanup(patchRenderRestore(settings))
 			} catch (error) {
-				console.error(`${TAG} failed to start deferred render restore:`, error)
+				reportError(`${TAG} failed to start deferred render restore:`, error)
 			}
 		}, 0)
 		api.cleanup(() => {
@@ -424,7 +433,7 @@ export default plugin<{ jsonStorage: GhostLogSettings }>({
 
 	stop(api) {
 		api.plugin.requireReload()
-		console.log(`${TAG} JS stopped`)
+		if (DEBUG) console.log(`${TAG} JS stopped`)
 	},
 
 	SettingsComponent: Settings,

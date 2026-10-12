@@ -1,3 +1,6 @@
+import { useSyncExternalStore } from 'react'
+import { reportError } from '../../../../shared/report'
+
 let revision = 0
 const listeners = new Set<() => void>()
 let pendingRefresh: ReturnType<typeof setTimeout> | undefined
@@ -20,13 +23,13 @@ export function notifyPresentationRefresh() {
 	revision++
 	for (const listener of listeners) {
 		try { listener() } catch (error) {
-			console.error("[ScreenshotRedactor] presentation refresh failed:", error)
+			reportError("[ScreenshotRedactor] presentation refresh failed:", error)
 		}
 	}
 }
 
 export function usePresentationRefresh() {
-	revenge.react.React.useSyncExternalStore(
+	useSyncExternalStore(
 		listener => {
 			listeners.add(listener)
 			return () => { listeners.delete(listener) }

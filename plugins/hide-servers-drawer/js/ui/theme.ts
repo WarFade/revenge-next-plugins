@@ -10,9 +10,12 @@
 // fallback it failed silently, so every colour here was its hardcoded default and none tracked the
 // user's theme: BACKGROUND_BASE_LOWEST resolves to #121214 on the 'darker' theme, not #1e1f22.
 
+import { Stores } from '@revenge-mod/discord/flux'
+import * as commonTokens from '@revenge-mod/discord/common/tokens'
+
 function tokenTables(): any {
 	try {
-		return (revenge.discord.common as any).tokens?.Tokens
+		return (commonTokens as any)?.Tokens
 	} catch {
 		return undefined
 	}
@@ -21,7 +24,7 @@ function tokenTables(): any {
 /** The theme actually in use ('dark', 'light', 'midnight', 'darker', 'ash', …). */
 function currentTheme(): string {
 	try {
-		const store = (revenge.discord.flux.Stores as any).ThemeStore
+		const store = (Stores as any).ThemeStore
 		const theme = store?.theme ?? store?.getTheme?.()
 		return typeof theme === "string" ? theme : "dark"
 	} catch {

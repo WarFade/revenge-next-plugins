@@ -1,7 +1,78 @@
 # VFX support for Android 12 and earlier
 
 Date: 2026-10-05  
-Status: Proposed; implementation has not started.
+Status: Phases 1 and 2 implemented in VFX 0.20.0, with Quick Toggles 0.4.6 integration. User reports the current effects work on the Android 16 test device (2026-10-05). VFX 0.21.0 adds legacy vaporwave, dreamy and VHS; those additions await device testing. Actual older-OS compatibility and performance validation remain pending.
+
+## Added in 0.22.0: experimental capture and pixel rainbows
+
+### 0.22.1 follow-up
+
+- User tested 0.22.0 ripple on Android 16: Completed, 35 frames, 325×721 capture, last capture 11.1 ms, upload/draw 1.0 ms, pipeline 23.1 ms. This confirms the prototype completed on that device, not full lifecycle/performance validation.
+- Capture now targets at most 20 fps (50 ms), backing off to as low as 10 fps based on average capture cost. Bitmap longest side is reduced from roughly 720 to 600 pixels (~31% fewer pixels). View traversal costs may not scale with bitmap size.
+- OpenGL wave drawing targets 30 fps independently, reusing the latest texture between captures. One upload at a time, no queued capture backlog. This trades sharpness and content freshness while scrolling for less UI-thread capture work.
+- Diagnostics separate capture/draw counts, average/peak capture cost, draw time, capture-to-upload-completion pipeline time, and capture interval. Device comparison remains pending.
+- The rainbow border was a misunderstanding: replaced with **Rainbow puffs**, filled striped 8-bit clouds blown from each tap. Saved ID `rainbowedges` is retained so previous selections migrate automatically. Rainbow bubbles remains separate. Quick Toggles 0.4.8 updates the label.
+
+### Original 0.22.0 implementation
+
+- **Rainbow edges:** tap-triggered animated pixel border under Screen effect, using Canvas in both tiers. **Rainbow bubbles:** a separate hollow pixel bubble particle style alongside Confetti, rising with gentle sway. Quick Toggles 0.4.7 adds both choices.
+- **Experimental legacy ripple:** opt-in `legacyRipple` setting under Compatibility. With legacy mode active, Ripple captures the selected root through software `View.draw(Canvas)` into a reusable bitmap, at most 720 pixels on the longest side, and uploads it to OpenGL ES 2 on a dedicated EGL worker.
+- The TextureView sits inside an overlay container whose drawing is excluded during capture to avoid feedback. Only the moving wave band is displayed, leaving live content visible elsewhere. This is an original ripple approximation rather than the modern shader's exact response.
+- One window/session and one in-flight bitmap at a time; no capture backlog. A session lasts roughly 0.7–1.8 seconds. New taps during it are ignored. Capture runs on the UI thread, with a target pipeline interval of 33 ms. Repeated capture times above 40 ms or any above 120 ms stop the session.
+- Visible SurfaceViews/TextureViews cause the prototype to decline capture. Hardware-only bitmap rendering may fail on software Canvas; such failures are reported and disable the prototype for the session. This capture approach does not establish full fidelity for video, hardware-only rendering, other plugin effects, or dialogs.
+- Switching renderer/prototype settings, hiding/detaching/resizing the window, timeout or completion removes the overlay and releases EGL/bitmap resources. Capture, upload/draw, total pipeline time, frame count and bitmap dimensions appear in Compatibility. These are last-frame CPU/pipeline timings, not measured display latency or GPU frame time.
+- **Android 16 test:** enable Force legacy rendering and Experimental legacy ripple, select Ripple, then tap on text and scroll. Verify orientation, touch alignment, visible distortion, no feedback, no frozen overlay, and report Compatibility's status/timings. Repeat after opening a dialog and with images. Turn the prototype off to restore the regular legacy choices.
+- Native compilation has passed; OpenGL compilation, capture fidelity, performance and actual older-OS support require device validation. Other advanced effects remain deferred until this prototype is proven.
+
+## Added in 0.21.0
+
+- **CRT tuning:** slightly stronger legacy scanlines (alpha 46 → 58) and deeper edge vignette (maximum alpha 184 → 204), with the transparent centre preserved. Other filters retain their existing vignette.
+- **Vaporwave:** static pink/violet/cyan gradient washes and scanlines. Does not recolour content based on luminance.
+- **Dreamy:** six drifting pastel cloud gradients and 28 seeded rising/twinkling motes. Filter-only animation is capped at 20 fps; no content distortion or true bloom.
+- **VHS:** animated tiled grain, rolling tracking glow, textured tracking lines, gentle flicker and bottom-edge tape noise. Filter-only animation is capped near 24 fps; no per-line displacement or RGB separation.
+- All use the existing Canvas composition/cleanup path and per-effect capabilities, so Quick Toggles 0.4.6 picks them up without another update. Gradients and the small noise tile are reused across frames and scaled for each window.
+- Device follow-up: test the three filters individually, combine with ink/shockwave, change windows/orientation, switch to None/static filters, and toggle legacy off/on. Check animation resumes after backgrounding and no overlay remains after disabling.
+
+## Implemented in 0.20.0
+
+- `Rendering.kt` provides an API-24-safe renderer interface, stable effect IDs, per-effect availability, renderer/quality descriptions, and failure reporting. The minimum SDK remains 24.
+- `ModernRenderer.kt` owns modern shader objects, compilation, filters, frost interaction and arcade CRT shading. Common touch/message/arcade code no longer has RuntimeShader or RenderEffect fields or signatures. `Compositor` and `SharedLayers` are reached through modern rendering only.
+- `LegacyRenderer.kt` provides one Canvas drawable per window, composing a persistent filter beneath touch bursts. It uses weak view references, removes idle overlays, reuses paths/gradients and a small noise tile, caps simultaneous bursts at seven, and scans for new/changed windows every 500 ms while a filter is selected.
+- Available legacy touch effects: **shockwave** (bright expanding ring/glow) and **ink** (colourful organic bloom). Ink reuses the modern 1.8-second envelope and angular wobble; shockwave reuses the 1100 dp/s expansion speed.
+- Available legacy filters: **CRT** (scanlines, vignette, corner mask), **old film** (warm tint, grain, scratches, dust and flicker, capped near 24 fps), and **night vision** (green tint, fixed grain, eyepiece vignette). CRT/night vision have no continuous animation loop.
+- Settings, test chips and Quick Toggles use native per-effect capability maps. Unsupported saved preferences remain intact. Preview lists and /fx choices omit unavailable message effects; native also enforces eligibility. Slam uses the legacy shockwave, Glitch retains shake, and Swirl is unavailable in legacy mode.
+- Rendering requires hardware acceleration on each target window. Initialization/draw failures disable the affected effect for that renderer/session and are logged; open settings periodically refresh capability diagnostics.
+
+### Remaining work
+
+1. Device-test both rendering tiers, switching mid-animation, saved settings after restart, previews/restoration, quick toggles, messages, dialogs, keyboard/rotation, hidden windows and plugin cleanup.
+2. Validate actual Android 11, Android 12 and earlier supported versions. The Android 16 override does not prove old-OS class loading or API availability.
+3. Profile frame time, allocation and battery use on lower-end hardware; tune overlay appearance using device feedback.
+4. Device-test the new 0.21.0 vaporwave, dreamy and VHS variants. Ripple, lens, pixelation, jelly, black hole, monochrome ink that samples background brightness, and precise frost clearing still require a suitable content renderer.
+5. Validate the opt-in 0.22.0 OpenGL ripple capture prototype before extending it to other advanced effects.
+
+## Testing legacy rendering on a newer phone
+
+In **VFX → Compatibility**, enable **Force legacy rendering**. This saved native setting (`forceLegacy`, default `false`) selects the same non-shader path used on Android 12 and earlier, including on the Android 16 test device. Turning it off restores automatic selection; it never enables modern rendering below API 33.
+
+- The change applies live and persists across restarts.
+- Settings report the real `apiLevel`, effective `rendererTier` (`modern` or `legacy`), and effective shader `supported` flag.
+- Switching cancels active effects, clears VFX's compositor layers and frost state, and invalidates temporary filter restoration. Saved styles, filters, and master switches are retained.
+- Native checks cover taps, finger effects, delayed distortions, send/receive triggers, message effects, surprise effects, filters, and the arcade celebration's CRT shader. Previews and quick toggles cannot enable shaders in legacy mode.
+- Starting in forced legacy mode skips shader validation; switching back validates shaders before restoring the selected filter.
+
+**Current legacy coverage:** shockwave and ink, six filters (CRT, old film, night vision, vaporwave, dreamy and VHS), plus particles, charge rings, shake, and non-shader power/message effects. Overlay approximations do not bend or sample Discord's pixels; night vision does not convert content to monochrome.
+
+### Android 16 manual verification (current effects reported working; detailed lifecycle checks remain pending)
+
+1. Choose CRT and shockwave, then enable the override. Modern rendering should clear and the legacy versions should take over; status should show the real API level and **Legacy renderer**. Repeat with an unsupported saved filter/effect and verify it stays saved but does not render.
+2. Try particles, charge-on-hold, typing effects, send/receive previews, message effects, and an arcade high-score preview. Non-shader visuals should play without screen distortion or CRT shading.
+3. Try selecting a filter/distortion and enabling its quick toggle while legacy is active. It must not render a shader.
+4. Restart with the override on. Confirm it remains enabled and a supported saved filter appears using Canvas, while unsupported filters stay inactive.
+5. Turn the override off. Confirm **Modern renderer**, the saved filter returns if enabled, and the selected touch effect plays again. Also test this after a cold start in legacy mode.
+6. Toggle during a temporary surprise filter, finger effect, or delayed message effect; check for stale filters, leftover overlays, and lost touch input.
+
+This override exercises rendering selection on the newer OS. Actual older-Android class loading, missing APIs, and GPU behavior still need validation during the compatibility phases below.
 
 ## Goal
 
@@ -13,7 +84,7 @@ Full visual parity is not required for the initial implementation. Distinguish e
 
 ## Current implementation
 
-The `plugins/screen-effects` implementation primarily uses an Android 13+ `supported` flag. `Filters.kt`, `Ripple.kt`, `Lens.kt`, and `Finger.kt` depend on `RuntimeShader`.
+The `plugins/screen-effects` implementation retains `supported` as the effective shader-support flag for compatibility, and now reports `effects`, `filters`, `messageCapabilities`, `hardwareAccelerated`, and `rendererTier`. `Filters.kt`, `Ripple.kt`, `Lens.kt`, and `Finger.kt` depend on `RuntimeShader` behind the modern renderer boundary.
 
 Relevant integration points:
 
@@ -131,6 +202,8 @@ Use the existing `brokenStyles` mechanism as a starting point for reporting rend
 
 ### Phase 1: Capability system
 
+Implemented in 0.20.0; runtime validation remains part of Phase 3.
+
 - Introduce a renderer interface and per-effect availability.
 - Separate API 33 shader classes from older-compatible code.
 - Audit Compositor and SharedLayers: RenderEffect itself requires API 31.
@@ -139,6 +212,8 @@ Use the existing `brokenStyles` mechanism as a starting point for reporting rend
 - Keep cleanup and effect ownership consistent across renderers.
 
 ### Phase 2: Lightweight fallback pack
+
+Implemented in 0.20.0; visual tuning awaits device testing.
 
 Start with CRT overlay, old film, night vision approximation, shockwave, and ink overlay. These offer strong visible improvements at moderate complexity.
 

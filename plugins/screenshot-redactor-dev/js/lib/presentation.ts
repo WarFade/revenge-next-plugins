@@ -1,5 +1,6 @@
 import { redactedAvatarUrl, redactedName } from "./alias"
 import type { RedactOptions } from "./rowSchema"
+import * as React from "react"
 
 export interface PresentationOptions extends RedactOptions {
 	enabled: boolean
@@ -9,7 +10,6 @@ export interface PresentationOptions extends RedactOptions {
 /** Keep store records intact: only copy React elements and their presentation props. */
 export function redactPresentation(tree: any, userId: string, options: PresentationOptions): any {
 	if (!options.enabled || !options.resolved || (!options.self && userId === options.selfId)) return tree
-	const React = revenge.react.React
 	const name = redactedName(userId, options.style)
 	const avatar = redactedAvatarUrl(userId)
 

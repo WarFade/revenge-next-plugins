@@ -7,6 +7,10 @@ import { useBottomPadding } from '../safeArea'
 import TagIcon from '../TagIcon'
 import type { StaffTagsStorage } from '../../types'
 import { useChangelog } from '../../../../../shared/changelog'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * The tag list: every tag with what it currently looks like, each opening its own page.
@@ -26,11 +30,10 @@ export default function Settings({
 }) {
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } =
-		revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	const s = { ...DEFAULTS, ...(api.jsonStorage.use() ?? {}) }

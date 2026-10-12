@@ -14,6 +14,13 @@
  */
 
 import { debug, TAG, toast } from './state'
+import { Dispatcher } from '@revenge-mod/discord/common/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export type RestoreRoute = 'saveDraft' | 'dispatch' | 'clipboard' | 'none'
 
@@ -43,8 +50,8 @@ function getDraftModule(): any {
 	draftModuleResolved = true
 
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		const [mod, id] = lookupModule(withProps('saveDraft', 'clearDraft')) as [
 			any,
 			number | undefined,
@@ -82,7 +89,7 @@ function viaSaveDraft(channelId: string, content: string): boolean {
 
 function viaDispatch(channelId: string, content: string): boolean {
 	try {
-		const dispatcher = revenge.discord.common.flux.Dispatcher as any
+		const dispatcher = Dispatcher as any
 		if (typeof dispatcher?.dispatch !== 'function') return false
 		dispatcher.dispatch({
 			type: 'DRAFT_CHANGE',
@@ -99,7 +106,7 @@ function viaDispatch(channelId: string, content: string): boolean {
 
 function viaClipboard(content: string): boolean {
 	try {
-		const Clipboard = (revenge.react.ReactNative as any)?.Clipboard
+		const Clipboard = (ReactNative as any)?.Clipboard
 		if (typeof Clipboard?.setString !== 'function') return false
 		Clipboard.setString(content)
 		return true
@@ -127,14 +134,14 @@ function restore(channelId: string, content: string): RestoreRoute {
 	}
 
 	if (viaClipboard(content)) {
-		console.log(
+		if (DEBUG) console.log(
 			`${TAG} could not reach the input box; draft copied to the clipboard instead`,
 		)
 		toast('Copied your message to the clipboard')
 		return 'clipboard'
 	}
 
-	console.error(`${TAG} could not restore the draft by any route`)
+	reportError(`${TAG} could not restore the draft by any route`)
 	toast('Could not recover your message')
 	return 'none'
 }

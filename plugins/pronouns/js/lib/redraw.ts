@@ -13,6 +13,9 @@
  */
 
 import { getModuleByPath } from '../../../../shared/modules'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
 
 const TAG = '[Pronouns]'
 const ZWSP = '​'
@@ -23,7 +26,7 @@ let channelMessages: any
 let emitQueued = false
 
 export function watchChannelMessages(): () => void {
-	const { withProps } = revenge.modules.finders.filters
+	const { withProps } = filters
 	const resolve = (mod: any) => {
 		if (!mod) return undefined
 		if (typeof mod?.getOrCreate === 'function' && typeof mod?.commit === 'function') return mod
@@ -78,15 +81,15 @@ export function redrawMessage(channelId: string, messageId: string): boolean {
 			queueMicrotask(() => {
 				emitQueued = false
 				try {
-					;(revenge.discord.flux.Stores as any).MessageStore?.emitChange?.()
+					;(Stores as any).MessageStore?.emitChange?.()
 				} catch (error) {
-					console.error(`${TAG} redraw emit failed:`, error)
+					reportError(`${TAG} redraw emit failed:`, error)
 				}
 			})
 		}
 		return true
 	} catch (error) {
-		console.error(`${TAG} redraw failed:`, error)
+		reportError(`${TAG} redraw failed:`, error)
 		return false
 	}
 }

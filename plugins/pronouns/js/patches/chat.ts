@@ -18,6 +18,11 @@ import { prime, resolve } from '../lib/resolve'
 import { onResolved } from '../lib/pronounDB'
 import { onProfileChange } from '../lib/discord'
 import { redrawMessage } from '../lib/redraw'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
 
 const TAG = '[Pronouns]'
 
@@ -67,7 +72,7 @@ export function refresh() {
 				// The redraw re-runs getTagProperties, which records the new text in `shown`.
 				if (at > 0) redrawMessage(key.slice(0, at), key.slice(at + 1))
 			} catch (error) {
-				console.error(`${TAG} refresh failed:`, error)
+				reportError(`${TAG} refresh failed:`, error)
 			}
 		}
 	}, 50)
@@ -77,9 +82,9 @@ export function refresh() {
 // The patch
 
 export default (): () => void => {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
-	const { ChannelStore } = revenge.discord.flux.Stores as any
+	const { getModules } = finders
+	const { withName } = filters
+	const { ChannelStore } = Stores as any
 
 	const unpatches: Array<() => void> = []
 
@@ -101,7 +106,7 @@ export default (): () => void => {
 				// until the stack overflows. `before`/`after` compose with any number of them.
 				// `after` only receives the return value, so the message is stashed in `before`.
 				unpatches.push(
-					revenge.patcher.before(getTagProperties, 'default', (args: any[]) => {
+					before(getTagProperties, 'default', (args: any[]) => {
 						pendingMessage = args?.[0]?.message
 						// A before-hook must return the args array (porting rule 2).
 						return args
@@ -109,7 +114,7 @@ export default (): () => void => {
 				)
 
 				unpatches.push(
-					revenge.patcher.after(getTagProperties, 'default', (ret: any) => {
+					after(getTagProperties, 'default', (ret: any) => {
 						const message = pendingMessage
 						pendingMessage = undefined
 						try {
@@ -136,7 +141,7 @@ export default (): () => void => {
 							track(key, { authorId, guildId, shown: text })
 							return text ? { ...ret, tagText: text, tagType: undefined } : ret
 						} catch (error) {
-							console.error(`${TAG} chat tag failed:`, error)
+							reportError(`${TAG} chat tag failed:`, error)
 							// The after-hook's return value is assigned unconditionally, so the
 							// original result must survive a failure here.
 							return ret
@@ -144,7 +149,7 @@ export default (): () => void => {
 					}),
 				)
 			} catch (error) {
-				console.error(`${TAG} could not patch getTagProperties:`, error)
+				reportError(`${TAG} could not patch getTagProperties:`, error)
 			}
 		},
 		{ returnNamespace: true },

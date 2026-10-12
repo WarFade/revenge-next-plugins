@@ -1,6 +1,11 @@
 import getTag, { isBuiltInTag } from "../lib/getTag"
 import { findInReactTree } from "../lib/findInReactTree"
 import { DEFAULTS, type StaffTagsStorage } from "../index"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
 
 // Applies the tag to one rendered UserRow. Split out of the hooks below so the `before` half can
 // stash the props and the `after` half can use them: `after` only receives the return value.
@@ -107,8 +112,8 @@ function withMemoName(name: string) {
 // actually renders. lookupModule/lookupModules give up immediately and permanently cache
 // that as "not found"; getModules subscribes and calls back whenever the module loads.
 export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
-	const { getModules } = revenge.modules.finders
-	const { withProps, withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withProps, withName } = filters
 
 	let tagModule: any
 	const getTagModule = () => tagModule
@@ -119,7 +124,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 	// Flux stores are looked up by name directly through the Stores proxy, not a module
 	// finder filter -- there is no `withStoreName` under modules.finders.filters. Confirmed
 	// reliable even on a cold restart, unlike the UI-component lookups above/below.
-	const { GuildStore } = revenge.discord.flux.Stores as any
+	const { GuildStore } = Stores as any
 
 	const patches: Array<() => void> = []
 	const patchedAlready = new Set<any>()
@@ -139,25 +144,25 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 			// re-enters it mid-call, so one stash slot per row type is enough.
 			let pendingProps: any
 			patches.push(
-				revenge.patcher.before(UserRow, "type", (args: any[]) => {
+				before(UserRow, "type", (args: any[]) => {
 					pendingProps = args?.[0]
 					return args
 				}),
 			)
 			patches.push(
-				revenge.patcher.after(UserRow, "type", (res: any) => {
+				after(UserRow, "type", (res: any) => {
 					const props = pendingProps
 					pendingProps = undefined
 					try {
 						return applyRowTag(res, props, jsonStorage, getTagModule, GuildStore)
 					} catch (error) {
-						console.error("[StaffTags] member row tag failed:", error)
+						reportError("[StaffTags] member row tag failed:", error)
 						return res
 					}
 				}),
 			)
 		} catch (error) {
-			console.error("[StaffTags] could not patch UserRow:", error)
+			reportError("[StaffTags] could not patch UserRow:", error)
 		}
 	}
 

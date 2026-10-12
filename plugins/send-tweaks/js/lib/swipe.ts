@@ -1,3 +1,6 @@
+import * as React from 'react'
+import { Animated } from 'react-native'
+
 /**
  * The hold-and-swipe gesture's live state, shared between the touch handlers on the send button
  * (`patches/sendButton.tsx`) and the capsule drawn over it (`ui/components/SwipeIndicator.tsx`).
@@ -51,7 +54,7 @@ let drag: any
 
 /** Created on first use: `revenge.react` must not be read at module scope (porting rule 1). */
 export function swipeDrag(): any {
-	drag ??= new revenge.react.ReactNative.Animated.Value(0)
+	drag ??= new Animated.Value(0)
 	return drag
 }
 
@@ -75,7 +78,6 @@ export function setSwipeDistance(up: number) {
 
 /** The gesture state, re-rendering whenever it changes. Call like a hook. */
 export function useSwipeState(): State {
-	const React = revenge.react.React
 	const [, redraw] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => {
 		listeners.add(redraw)

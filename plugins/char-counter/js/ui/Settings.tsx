@@ -5,15 +5,17 @@ import { type CharCounterStorage, DEFAULTS, FONT_SIZE } from '../index'
 import { badgeStatus, CounterSquare, fontSizeOf } from '../lib/badge'
 import { counterStatus } from '../lib/counter'
 import { useChangelog } from '../../../../shared/changelog'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 export default function Settings({ api }: { api: RevengePluginStartApi<CharCounterStorage> }) {
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TableRadioGroup, TableRadioRow, Slider } = revenge
-		.discord.design.Design as any
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TableRadioGroup, TableRadioRow, Slider } = Design as any
 
 	const s = { ...DEFAULTS, ...(api.jsonStorage.use() ?? {}) }
 	const problem = [counterStatus.lastError, badgeStatus.lastError].filter(Boolean).join('\n')

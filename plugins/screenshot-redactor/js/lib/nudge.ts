@@ -20,6 +20,8 @@
  * emit on a store nobody is listening to costs nothing.
  */
 
+import { Stores } from '@revenge-mod/discord/flux'
+
 const STORE_NAMES = ["RelationshipStore", "UserStore", "GuildMemberStore", "ChannelStore"]
 const EMIT_METHODS = ["emitChange", "doEmitChanges"]
 
@@ -27,7 +29,7 @@ const EMIT_METHODS = ["emitChange", "doEmitChanges"]
 export function nudgeStores(): string[] {
 	let stores: any
 	try {
-		stores = revenge.discord.flux.Stores as any
+		stores = Stores as any
 	} catch {
 		return []
 	}

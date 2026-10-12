@@ -17,6 +17,13 @@ import { validateTemplate } from '../../lib/templateValidation'
 import { settings } from '../../lib/state'
 import { clearTemplateSession } from '../templateSession'
 import { showToast as triggerToast } from '../../lib/toast'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 function showToast(content: string) {
 	triggerToast(content, { key: 'SendTweaksRuleToast' })
@@ -29,8 +36,8 @@ function showToast(content: string) {
  * Seeded once: the screen pins its rule on mount, so nothing else edits this text meanwhile.
  */
 function LinesField({ value, onChange, ...rest }: { value: string; onChange: (value: string) => void } & Record<string, unknown>) {
-	const { React } = revenge.react
-	const { TextInput, TextArea } = revenge.discord.design.Design
+	const { React } = react
+	const { TextInput, TextArea } = Design
 	// TextArea is Discord's multi-line field, so Enter adds a line. TextInput with `multiline` didn't
 	// on the phone (348/349); it's only the fallback if a Discord update drops TextArea.
 	const Input = (TextArea ?? TextInput) as any
@@ -51,9 +58,9 @@ function LinesField({ value, onChange, ...rest }: { value: string; onChange: (va
 /** One rule, on its own screen. Opened from a rule list (`Rules.tsx`). */
 export default function EditRule() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
+	const { React } = react
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -63,10 +70,9 @@ export default function EditRule() {
 		TextInput,
 		AlertModal,
 		AlertActionButton,
-	} = revenge.discord.design.Design
-	const Alerts = revenge.discord.actions.AlertActionCreators
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	} = Design
+	const Alerts = AlertActionCreators
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as any
 
 	// Pinned on mount, so opening another rule later cannot swap this screen's rule underneath it.
@@ -103,7 +109,7 @@ export default function EditRule() {
 	const perServer = unlocked && !links
 	const serverTexts: ServerReplacement[] = rule.serverReplace ?? []
 	const guildName = (entry: ServerReplacement) =>
-		(revenge.discord.flux.Stores as any).GuildStore?.getGuild?.(entry.guildId)?.name ?? entry.name ?? entry.guildId
+		(Stores as any).GuildStore?.getGuild?.(entry.guildId)?.name ?? entry.name ?? entry.guildId
 	const setServerText = (guildId: string, replace: string) =>
 		set({ serverReplace: serverTexts.map(entry => (entry.guildId === guildId ? { ...entry, replace } : entry)) })
 	const removeServerText = (entry: ServerReplacement) => {

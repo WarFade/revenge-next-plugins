@@ -12,6 +12,11 @@ import { API_URL } from './api'
 import { confirm, modals, OAuth2AuthorizeModal, TAG, toast } from './discord'
 import { refreshUser } from './startup'
 import { getToken, updateAuth } from './state'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 export const CLIENT_ID = '915703782174752809'
 const CLIENT_MOD = 'vendetta'
@@ -23,31 +28,31 @@ async function exchange(location: string, callback?: () => void) {
 		// "not implemented"), which is what desktop uses here.
 		const sep = location.includes('?') ? '&' : '?'
 		const url = `${location}${sep}returnType=json&clientMod=${CLIENT_MOD}`
-		console.log(`${TAG} authorize: exchanging the Discord code with ReviewDB`)
+		if (DEBUG) console.log(`${TAG} authorize: exchanging the Discord code with ReviewDB`)
 		const res = await fetch(url, { headers: { Accept: 'application/json' } })
 		const body = await res.json().catch(() => ({}) as any)
 
 		if (!res.ok || !body?.token) {
-			console.error(`${TAG} authorize: ReviewDB answered ${res.status}: ${body?.message ?? '(no message)'}`)
+			reportError(`${TAG} authorize: ReviewDB answered ${res.status}: ${body?.message ?? '(no message)'}`)
 			toast(body?.message ?? 'An error occurred while authorizing')
 			return
 		}
 
 		updateAuth({ token: body.token })
-		console.log(`${TAG} authorize: signed in, token stored=${!!getToken()}`)
+		if (DEBUG) console.log(`${TAG} authorize: signed in, token stored=${!!getToken()}`)
 		refreshUser().catch(() => {})
 		toast('Successfully logged in!')
 		callback?.()
 	} catch (error) {
-		console.error(`${TAG} failed to authorize:`, error)
+		reportError(`${TAG} failed to authorize:`, error)
 		toast('Authorization failed. Try again later.')
 	}
 }
 
 function httpClient(): any {
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		return lookupModule<any>(withProps('HTTP', 'getAPIBaseURL'))?.[0]?.HTTP
 	} catch {
 		return undefined
@@ -62,9 +67,9 @@ function httpClient(): any {
  */
 function authorizeDirect(callback?: () => void) {
 	const HTTP = httpClient()
-	console.log(`${TAG} authorize: Discord authorize screen not loaded, using the direct request`)
+	if (DEBUG) console.log(`${TAG} authorize: Discord authorize screen not loaded, using the direct request`)
 	if (typeof HTTP?.post !== 'function') {
-		console.error(`${TAG} authorize: no OAuth2AuthorizeModal and no HTTP client`)
+		reportError(`${TAG} authorize: no OAuth2AuthorizeModal and no HTTP client`)
 		toast("Couldn't authorize: Discord's request helper wasn't found.")
 		return
 	}
@@ -76,7 +81,7 @@ function authorizeDirect(callback?: () => void) {
 		cancelText: 'Cancel',
 		async onConfirm() {
 			try {
-				console.log(`${TAG} authorize: asking Discord for a code`)
+				if (DEBUG) console.log(`${TAG} authorize: asking Discord for a code`)
 				const res = await HTTP.post({
 					url: '/oauth2/authorize',
 					query: {
@@ -88,15 +93,15 @@ function authorizeDirect(callback?: () => void) {
 					body: { authorize: true, permissions: '0' },
 				})
 				const location = res?.body?.location
-				console.log(`${TAG} authorize: Discord answered ${res?.status}, location=${typeof location === "string"}`)
+				if (DEBUG) console.log(`${TAG} authorize: Discord answered ${res?.status}, location=${typeof location === "string"}`)
 				if (typeof location !== 'string') {
-					console.error(`${TAG} authorize: no location in`, res?.body)
+					reportError([`${TAG} authorize: no location in`, res?.body].join(' '))
 					toast('Discord refused the authorization.')
 					return
 				}
 				await exchange(location, callback)
 			} catch (error: any) {
-				console.error(`${TAG} authorize request failed:`, error)
+				reportError(`${TAG} authorize request failed:`, error)
 				toast(error?.body?.message ?? 'Authorization failed. Try again later.')
 			}
 		},

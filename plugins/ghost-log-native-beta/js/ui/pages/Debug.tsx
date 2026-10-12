@@ -6,12 +6,16 @@ import { rowIcon } from '../icon'
 import { showToast } from '../../../../../shared/toast'
 import { useBottomPadding } from '../safeArea'
 import type { GhostLogSettings } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 export default function Debug() {
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { ScrollView, Alert } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { React } = react
+	const { ScrollView, Alert } = ReactNative
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	const storage = getSettingsStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

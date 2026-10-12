@@ -38,6 +38,8 @@ import { ChangeType, redactRows } from "./rowSchema"
 import { count, noteRefreshOutcome } from "./diagnostics"
 import { nudgeStores } from "./nudge"
 import { currentUserId, isEnabled, settings } from "./state"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../shared/report"
 
 interface TagState {
 	/** `undefined` mirrors native's `rows == null`, i.e. "the next batch is a full sync". */
@@ -165,7 +167,7 @@ export function noteCleared(tag: number) {
 
 function chatManager(): any {
 	try {
-		return (revenge.react.ReactNative as any)?.NativeModules?.DCDChatManager
+		return (ReactNative as any)?.NativeModules?.DCDChatManager
 	} catch {
 		return undefined
 	}
@@ -242,7 +244,7 @@ export function refreshChat(): string | undefined {
 			state.rows = mirror
 			repainted++
 		} catch (error) {
-			console.error("[ScreenshotRedactor] repaint failed for tag", tag, error)
+			reportError(["[ScreenshotRedactor] repaint failed for tag", tag].join(' '), error)
 			noteRefreshOutcome(`failed: ${String(error)}`)
 			return undefined
 		}

@@ -23,6 +23,9 @@
 import { whenModule } from '../lib/finder'
 import { wrapMethod } from '../lib/wrap'
 import { debug, settings, TAG } from '../lib/state'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const METHODS = ['createPendingReply', 'createShallowPendingReply'] as const
 
@@ -63,14 +66,14 @@ export default function patchReplyMention(): () => void {
 								debug(`${method}: reply started with mention off`)
 							}
 						} catch (error) {
-							console.error(`${TAG} ${method} hook failed:`, error)
+							reportError(`${TAG} ${method} hook failed:`, error)
 						}
 					}),
 				)
 			}
 
 			status.installed = true
-			console.log(`${TAG} reply mention default hooked on module ${id}`)
+			if (DEBUG) console.log(`${TAG} reply mention default hooked on module ${id}`)
 		}),
 	)
 

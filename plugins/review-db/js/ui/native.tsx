@@ -9,10 +9,16 @@
  */
 
 import { defaultAvatar, TAG } from '../lib/discord'
+import { getAssetIdByName } from '@revenge-mod/assets'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 function byPath(path: string): any {
 	try {
-		return (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(path)?.[0]
+		return (finders as any).lookupModuleWithImportedPath(path)?.[0]
 	} catch {
 		return undefined
 	}
@@ -47,7 +53,7 @@ function emptyStateComponent(): any {
 
 export function assetId(name: string): number | undefined {
 	try {
-		const id = revenge.assets.getAssetIdByName(name)
+		const id = getAssetIdByName(name)
 		return typeof id === 'number' ? id : undefined
 	} catch {
 		return undefined
@@ -58,14 +64,13 @@ let Boundary: any
 /** Renders `fallback` if the children throw while rendering. Built on first use (porting rule 1). */
 function boundary(): any {
 	if (Boundary) return Boundary
-	const React = revenge.react.React
 	Boundary = class extends React.Component<{ name: string; fallback: any; children?: any }, { failed: boolean }> {
 		state = { failed: false }
 		static getDerivedStateFromError() {
 			return { failed: true }
 		}
 		componentDidCatch(error: unknown) {
-			console.error(`${TAG} Discord's ${this.props.name} failed; using the plain version:`, error)
+			reportError(`${TAG} Discord's ${this.props.name} failed; using the plain version:`, error)
 		}
 		render() {
 			return this.state.failed ? this.props.fallback : this.props.children
@@ -87,7 +92,7 @@ export function Native({ name, available, fallback, children }: { name: string; 
 
 function userRecord(userId: string): any {
 	try {
-		return (revenge.discord.flux.Stores as any).UserStore?.getUser?.(userId)
+		return (Stores as any).UserStore?.getUser?.(userId)
 	} catch {
 		return undefined
 	}
@@ -105,8 +110,7 @@ const PIXELS: Record<AvatarSize, number> = { XSMALL: 24, SMALL: 32, NORMAL: 40, 
  * the animated avatar come with it; anyone else is drawn from ReviewDB's photo URL.
  */
 export function UserAvatar({ userId, photo, size = 'NORMAL' }: { userId: string; photo?: string; size?: AvatarSize }) {
-	const React = revenge.react.React
-	const { Image } = revenge.react.ReactNative
+	const { Image } = ReactNative
 	const [failed, setFailed] = React.useState(false)
 	const px = PIXELS[size]
 	const uri = !failed && photo ? photo : defaultAvatar(userId)

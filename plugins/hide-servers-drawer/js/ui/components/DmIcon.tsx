@@ -4,6 +4,9 @@ import { BAR_WIDTH, ICON_SIZE } from "../layout"
 import { avatarFallback, barBackground, mentionBadge, selectedFill, unreadDot } from "../theme"
 import MorphIcon from "./MorphIcon"
 import Pill from "./Pill"
+import * as assets from "@revenge-mod/assets"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // getAssetIdByName (lowercase "d"), under revenge.assets not revenge.components -- confirmed
 // from revenge-bundle-next's own source. Resolved on first render rather than at module scope:
@@ -17,7 +20,7 @@ import Pill from "./Pill"
 let homeIcon: number | undefined
 function homeIconAsset() {
 	if (homeIcon === undefined) {
-		const { getAssetIdByName } = revenge.assets
+		const { getAssetIdByName } = assets
 		homeIcon = getAssetIdByName("ClydeIcon") ?? getAssetIdByName("ChatIcon")
 	}
 	return homeIcon
@@ -45,8 +48,8 @@ function avatarUrl(recipient: RecentDm["recipientAvatar"]): string | undefined {
  */
 export default function DmIcon({ selected, onPress }: { selected: boolean; onPress: () => void }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Pressable, View, Image, Text } = revenge.react.ReactNative
+	const { React } = react
+	const { Pressable, View, Image, Text } = ReactNative
 
 	const [, bump] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => subscribeDmChanges(bump), [])

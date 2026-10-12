@@ -7,6 +7,9 @@
  */
 
 import { FieldRow } from './fieldGroup'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /** `#rrggbb` for anything recognisable, otherwise undefined. */
 export function parseColor(input: string): string | undefined {
@@ -56,9 +59,8 @@ export default function ColorInput({
 	onChange,
 }: ColorInputProps) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const React = revenge.react.React
-	const { View } = revenge.react.ReactNative
-	const { TextInput } = revenge.discord.design.Design
+	const { View } = ReactNative
+	const { TextInput } = Design
 
 	const [draft, setDraft] = React.useState(value)
 	const parsed = parseColor(draft)

@@ -1,5 +1,6 @@
 import { DEFAULTS } from '../defaults'
 import type { StickerStorage } from '../types'
+import { showToast } from '../../../../shared/toast'
 
 export const TAG = '[FreeStickers]'
 
@@ -23,7 +24,7 @@ export function update(patch: Partial<StickerStorage>) {
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({ key: 'FreeStickersToast', content })
+		showToast(content, 'FreeStickersToast')
 	} catch {
 		/* no toast */
 	}

@@ -20,6 +20,8 @@
 
 import { debug, getAi, getStorage, settings } from './state'
 import type { SavedSummary } from '../types'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
 
 /** Long enough for any real message, short enough that one paste cannot drain the budget. */
 const MAX_INPUT = 6000
@@ -65,7 +67,7 @@ function remember(key: string, text: string): void {
 	try {
 		getStorage()?.set({ saved: pruned })
 	} catch (error) {
-		console.error('[TLDR] could not save the summary:', error)
+		reportError('[TLDR] could not save the summary:', error)
 	}
 }
 
@@ -97,7 +99,7 @@ export function textOf(message: any): string {
 export function readableMentions(text: string): string {
 	return text.replace(/<@!?(\d{15,21})>/g, (whole, id) => {
 		try {
-			const user = (revenge.discord.flux.Stores as any)?.UserStore?.getUser?.(id)
+			const user = (Stores as any)?.UserStore?.getUser?.(id)
 			const name = user?.globalName || user?.username
 			return name ? `@${name}` : whole
 		} catch {
@@ -163,6 +165,6 @@ export function forgetSaved() {
 	try {
 		getStorage()?.set({ saved: [] })
 	} catch (error) {
-		console.error('[TLDR] could not clear saved summaries:', error)
+		reportError('[TLDR] could not clear saved summaries:', error)
 	}
 }

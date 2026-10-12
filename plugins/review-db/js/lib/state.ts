@@ -7,6 +7,9 @@
  */
 
 import type { ReviewDBCurrentUser } from './entities'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
 
 export interface AccountAuth {
 	token?: string
@@ -94,7 +97,7 @@ export function settings(): ReviewDBStorage {
 function write(patch: Record<string, any>) {
 	deepMerge(mirror, patch)
 	notify()
-	storage?.set(patch as any).catch(error => console.error('[ReviewDB] could not save settings:', error))
+	storage?.set(patch as any).catch(error => reportError('[ReviewDB] could not save settings:', error))
 }
 
 export function setSetting<K extends keyof ReviewDBStorage>(key: K, value: ReviewDBStorage[K]) {
@@ -103,7 +106,7 @@ export function setSetting<K extends keyof ReviewDBStorage>(key: K, value: Revie
 
 export function currentUserId(): string | undefined {
 	try {
-		return (revenge.discord.flux.Stores as any).UserStore?.getCurrentUser?.()?.id
+		return (Stores as any).UserStore?.getCurrentUser?.()?.id
 	} catch {
 		return undefined
 	}
@@ -143,7 +146,6 @@ function notify() {
 
 /** Re-renders whenever the settings change, through any handle. */
 export function useSettings(): ReviewDBStorage {
-	const React = revenge.react.React
 	const [, rerender] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => {
 		listeners.add(rerender)

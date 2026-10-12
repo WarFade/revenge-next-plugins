@@ -3,6 +3,10 @@ import { compileRule, type Rule } from '../../lib/textReplace'
 import { rowIcon } from '../icon'
 import { EDIT_RULE_ROUTE, READY_LINKS_ROUTE, READY_TEXT_ROUTE } from '../routes'
 import { useBottomPadding } from '../safeArea'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 export function TextRules() {
 	return <Rules kind="text" />
@@ -30,10 +34,10 @@ function summary(rule: Rule): string {
  */
 function Rules({ kind }: { kind: RuleKind }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as any
 
 	const links = kind === 'links'

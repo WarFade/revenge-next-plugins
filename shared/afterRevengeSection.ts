@@ -1,3 +1,5 @@
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
 /**
  * Runs `register` once Revenge's own settings section exists, for plugins whose sections must sit
  * below it (Themes' Theming, then Plugin Hub).
@@ -18,7 +20,7 @@
 export function afterRevengeSection(register: () => void): () => void {
 	let timer: ReturnType<typeof setTimeout> | undefined
 	let attempts = 0
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 
 	const attempt = () => {
 		timer = undefined

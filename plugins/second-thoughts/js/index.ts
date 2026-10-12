@@ -28,6 +28,7 @@ import { CHECKS_ROUTE, registerPages } from './ui/routes'
 import type { AiHandle, SecondThoughtsStorage } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { SecondThoughtsStorage }
@@ -39,6 +40,10 @@ export default plugin<{ jsonStorage: SecondThoughtsStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		if (api.plugin.startedLate) {
 			api.plugin.requireReload()
 			return
@@ -61,25 +66,19 @@ export default plugin<{ jsonStorage: SecondThoughtsStorage }>({
 		try {
 			ai?.setSettingsRoute?.(CHECKS_ROUTE)
 		} catch (error) {
-			console.error(
-				'[SecondThoughts] could not register a settings route with AI Core:',
-				error,
-			)
+			reportError('[SecondThoughts] could not register a settings route with AI Core:', error)
 		}
 
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error(
-				'[SecondThoughts] failed to register settings pages:',
-				error,
-			)
+			reportError('[SecondThoughts] failed to register settings pages:', error)
 		}
 
 		try {
 			cleanup(patchSendMessage())
 		} catch (error) {
-			console.error('[SecondThoughts] failed to guard sendMessage:', error)
+			reportError('[SecondThoughts] failed to guard sendMessage:', error)
 		}
 	},
 

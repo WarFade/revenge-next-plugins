@@ -13,6 +13,10 @@ import { dangerIcon, rowIcon } from '../icon'
 import { confirmDestructive } from '../../../../../shared/ui/confirm'
 import { useBottomPadding } from '../safeArea'
 import type { AiCoreStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 const trimUrl = (url: string) => url.trim().replace(/\/+$/, '').toLowerCase()
 
@@ -24,9 +28,8 @@ export function hostOf(url: string | null | undefined): string {
 /** Endpoint credentials and model choice. Nothing here is per-plugin. */
 export default function Provider() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const React = revenge.react.React
+	const { Page } = components
+	const { ScrollView } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -35,7 +38,7 @@ export default function Provider() {
 		TextInput,
 		TableRadioGroup,
 		TableRadioRow,
-	} = revenge.discord.design.Design as any
+	} = Design as any
 
 	// A plain navigator route, so there is no plugin `api` prop here.
 	const storage = getStorage()

@@ -10,6 +10,7 @@
  */
 
 import { CUSTOM_ICON, iconById, isValidCustomSvg, svgModule, svgXml } from '../lib/icons'
+import * as ReactNative from 'react-native'
 
 export interface TagIconProps {
 	/** Icon id, or `custom` when `customSvg` holds the markup. */
@@ -20,7 +21,7 @@ export interface TagIconProps {
 }
 
 export default function TagIcon({ icon, customSvg, color, size = 12 }: TagIconProps) {
-	const { Text } = revenge.react.ReactNative
+	const { Text } = ReactNative
 
 	if (!icon || icon === 'none') return null
 

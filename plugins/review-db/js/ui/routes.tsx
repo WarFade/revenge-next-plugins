@@ -15,6 +15,12 @@ import BlockedUsers from './BlockedUsers'
 import About from './pages/About'
 import Options from './pages/Options'
 import ReviewsScreen from './ReviewsScreen'
+import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
 
 const PREFIX = 'bleelblep.review-db'
 export const REVIEWS_ROUTE = `${PREFIX}.reviews`
@@ -36,7 +42,6 @@ export function getTarget() {
 }
 
 export function useTarget(): ReviewsTarget | null {
-	const React = revenge.react.React
 	const [, rerender] = React.useReducer((n: number) => n + 1, 0)
 	React.useEffect(() => {
 		listeners.add(rerender)
@@ -49,8 +54,8 @@ export function useTarget(): ReviewsTarget | null {
 
 function rootNavigation(): any {
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		const host = lookupModule<any>(withProps('getRootNavigationRef'))?.[0]
 		return (host?.getRootNavigationRef ?? host?.default?.getRootNavigationRef)?.()
 	} catch {
@@ -62,11 +67,11 @@ function navigateTo(route: string) {
 	const ref = rootNavigation()
 	if (typeof ref?.navigate !== 'function') {
 		toast("Couldn't open the page.")
-		console.error(`${TAG} no root navigation ref for ${route}`)
+		reportError(`${TAG} no root navigation ref for ${route}`)
 		return
 	}
 	try {
-		revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+		ActionSheetActionCreators.hideActionSheet()
 	} catch {
 		/* no sheet open */
 	}
@@ -84,7 +89,7 @@ export function openBlockedUsers() {
 }
 
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -94,7 +99,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } = revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 	let unregister: Array<() => void> = []
 	const unsubscribe = onSettingsModulesLoaded(() => {
 		unregister = [

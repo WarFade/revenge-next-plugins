@@ -3,13 +3,16 @@ import { repaintChannel } from '../../lib/repaint'
 import { channelName, getStorage, toggleId, userName } from '../../lib/state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** Rules are made from a message's long-press menu; here they are listed and removed. */
 export default function Rules() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

@@ -22,6 +22,16 @@
  */
 import { rowIcon } from './ui/icon'
 import { useBottomPadding } from './ui/safeArea'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
+import { reportError } from './report'
+
+const DEBUG: boolean = false
 
 export interface ChangelogEntry {
 	/** Exactly as in manifest.json. */
@@ -114,7 +124,7 @@ export function setupChangelog(api: any, entries: ChangelogEntry[], options: Cha
 	registered = plugin
 
 	const unregisterPage = registerPage(plugin)
-	checkForUpdate(plugin).catch(error => console.error(`[${plugin.name}] changelog check failed:`, error))
+	checkForUpdate(plugin).catch(error => reportError(`[${plugin.name}] changelog check failed:`, error))
 
 	return () => {
 		if (registered === plugin) registered = undefined
@@ -124,7 +134,7 @@ export function setupChangelog(api: any, entries: ChangelogEntry[], options: Cha
 
 async function checkForUpdate(plugin: Registered) {
 	if (!plugin.storage) {
-		console.warn(`[${plugin.name}] no jsonStorage, so the changelog can't tell when it updated`)
+		if (DEBUG) console.warn(`[${plugin.name}] no jsonStorage, so the changelog can't tell when it updated`)
 		return
 	}
 	const data = await plugin.storage.get()
@@ -151,8 +161,8 @@ async function checkForUpdate(plugin: Registered) {
  * the top right (unless `header: false`) and, after an update, shows "What's new" once.
  */
 export function useChangelog(options: { header?: boolean } = {}) {
-	const { React } = revenge.react
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { React } = react
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as {
 		navigate: (route: string) => void
 		setOptions?: (options: Record<string, unknown>) => void
@@ -171,14 +181,14 @@ export function useChangelog(options: { header?: boolean } = {}) {
 		showWhatsNew(plugin, entries, () => navigation.navigate(changelogRoute(plugin.id)))
 		plugin.storage
 			?.set({ [SEEN_KEY]: plugin.current })
-			.catch((error: unknown) => console.error(`[${plugin.name}] could not save the seen version:`, error))
+			.catch((error: unknown) => reportError(`[${plugin.name}] could not save the seen version:`, error))
 	}, [])
 }
 
 /** The clock icon that opens the Changelog page. For a header the plugin draws itself. */
 export function ChangelogButton() {
-	const { Pressable } = revenge.react.ReactNative
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Pressable } = ReactNative
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	const plugin = registered
 	if (!plugin) return null
@@ -199,8 +209,8 @@ export function ChangelogButton() {
 // The dialog
 
 function Bullets({ changes }: { changes: string[] }) {
-	const { View } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { Text } = Design as any
 	return (
 		<View style={{ gap: 4 }}>
 			{changes.map((change, i) => (
@@ -222,9 +232,9 @@ function versionHeading(entry: ChangelogEntry): string {
 }
 
 function showWhatsNew(plugin: Registered, entries: ChangelogEntry[], openChangelog: () => void) {
-	const { ScrollView, View, Dimensions } = revenge.react.ReactNative
-	const { AlertModal, AlertActionButton, Text } = revenge.discord.design.Design as any
-	const alerts = revenge.discord.actions.AlertActionCreators as any
+	const { ScrollView, View, Dimensions } = ReactNative
+	const { AlertModal, AlertActionButton, Text } = Design as any
+	const alerts = AlertActionCreators as any
 	const key = `bleelblep-whats-new-${plugin.id}`
 	const close = () => alerts.dismissAlert(key)
 	const shown = entries.slice(0, DIALOG_VERSIONS)
@@ -276,7 +286,7 @@ function showWhatsNew(plugin: Registered, entries: ChangelogEntry[], openChangel
 			/>,
 		)
 	} catch (error) {
-		console.error(`[${plugin.name}] couldn't show what's new:`, error)
+		reportError(`[${plugin.name}] couldn't show what's new:`, error)
 	}
 }
 
@@ -284,7 +294,7 @@ function showWhatsNew(plugin: Registered, entries: ChangelogEntry[], openChangel
 // The page
 
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -294,7 +304,7 @@ function refreshSettingsUI() {
 }
 
 function registerPage(plugin: Registered): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } = revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 	const route = changelogRoute(plugin.id)
 	let unregister: (() => void) | undefined
 	// Inside `onSettingsModulesLoaded`: registering before Discord's settings modules exist leaves
@@ -317,9 +327,9 @@ function registerPage(plugin: Registered): () => void {
 }
 
 function ChangelogPage() {
-	const { Page } = revenge.components as any
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow } = revenge.discord.design.Design as any
+	const { Page } = components as any
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow } = Design as any
 	const bottom = useBottomPadding()
 	const plugin = registered
 	if (!plugin) return null

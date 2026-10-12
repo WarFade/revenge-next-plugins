@@ -1,5 +1,9 @@
 import { findInReactTree } from '../lib/findInReactTree'
 import TagIcon from '../ui/TagIcon'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { instead } from '@revenge-mod/patcher'
+import * as React from 'react'
 
 /**
  * Paints the resolved tag: its text, colours, optional icon and optional gradient.
@@ -30,8 +34,8 @@ function lazy<T>(resolve: () => T): () => T {
  */
 const linearGradient = lazy<any>(() => {
 	try {
-		const { lookupModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules } = finders
+		const { withProps } = filters
 		// Several modules carry a `LinearGradient` export and the first match is NOT the
 		// component: on 348.1 module 5201 exports the *string* "LinearGradient", the native
 		// view-config name. Handing a string to createElement asks React for an unknown host
@@ -49,9 +53,8 @@ const linearGradient = lazy<any>(() => {
 })
 
 export default () => {
-	const { getModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
-	const React = revenge.react.React
+	const { getModules } = finders
+	const { withProps } = filters
 
 	let unpatch: (() => void) | undefined
 
@@ -63,7 +66,7 @@ export default () => {
 
 		// instead, not after: after's hook only receives the return value, not the original
 		// arguments (confirmed from revenge-bundle-next's own patcher source).
-		unpatch = revenge.patcher.instead(Tag, 'default', (args: any[], original: any) => {
+		unpatch = instead(Tag, 'default', (args: any[], original: any) => {
 			// Confirmed on-device crash: "undefined is not a function" here -- the target
 			// property wasn't actually a function yet when we patched it (a getModules match
 			// on partially-populated exports). Never assume a captured original is callable.

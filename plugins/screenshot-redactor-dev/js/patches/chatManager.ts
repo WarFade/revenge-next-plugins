@@ -2,6 +2,13 @@ import { applyBatch, isReplaying, noteCleared, setChatBridge } from "../lib/chat
 import { count, noteChatManagerPatch } from "../lib/diagnostics"
 import { redactRows } from "../lib/rowSchema"
 import { isEnabled, redactOptions } from "../lib/state"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { before } from "@revenge-mod/patcher"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * Redaction at the JS/native boundary.
@@ -41,14 +48,14 @@ import { isEnabled, redactOptions } from "../lib/state"
  */
 function findChatManager(): any {
 	const candidates = [
-		() => (revenge.react.ReactNative as any)?.NativeModules?.DCDChatManager,
+		() => (ReactNative as any)?.NativeModules?.DCDChatManager,
 		() => (globalThis as any)?.nativeModuleProxy?.DCDChatManager,
 		() => (globalThis as any)?.__turboModuleProxy?.("DCDChatManager"),
 		// Newer builds expose the chat module through the codegen TurboModule registry
 		// (`rtn-codegen/js/NativeChatModule.tsx`) rather than `NativeModules`. `get`
 		// returns null for a missing module; `getEnforcing` throws -- both are handled.
-		() => (revenge.react.ReactNative as any)?.TurboModuleRegistry?.get?.("DCDChatManager"),
-		() => (revenge.react.ReactNative as any)?.TurboModuleRegistry?.getEnforcing?.("DCDChatManager"),
+		() => (ReactNative as any)?.TurboModuleRegistry?.get?.("DCDChatManager"),
+		() => (ReactNative as any)?.TurboModuleRegistry?.getEnforcing?.("DCDChatManager"),
 	]
 
 	for (const get of candidates) {
@@ -78,8 +85,8 @@ function findChatManager(): any {
  */
 function subscribeForChatManager(): () => void {
 	try {
-		const { getModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { getModules } = finders
+		const { withProps } = filters
 
 		return getModules(
 			withProps("DCDChatManager"),
@@ -94,7 +101,7 @@ function subscribeForChatManager(): () => void {
 			{ max: 5 },
 		)
 	} catch (error) {
-		console.error("[ScreenshotRedactor] could not subscribe for DCDChatManager:", error)
+		reportError("[ScreenshotRedactor] could not subscribe for DCDChatManager:", error)
 		return () => {}
 	}
 }
@@ -149,8 +156,8 @@ function asChatCommands(exports: any): any {
  */
 function subscribeForChatCommands(): () => void {
 	try {
-		const { lookupModules, waitForModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModules, waitForModules } = finders
+		const { withProps } = filters
 
 		const accept = (exports: any) => {
 			if (installed) return
@@ -165,7 +172,7 @@ function subscribeForChatCommands(): () => void {
 
 		return waitForModules(withProps("updateRows"), accept)
 	} catch (error) {
-		console.error("[ScreenshotRedactor] could not subscribe for Fabric chat commands:", error)
+		reportError("[ScreenshotRedactor] could not subscribe for Fabric chat commands:", error)
 		return () => {}
 	}
 }
@@ -180,7 +187,7 @@ function tagOf(ref: any): number | undefined {
 
 function installFabric(commands: any) {
 	cleanups.push(
-		revenge.patcher.before(commands, "updateRows", (args: any[]) => {
+		before(commands, "updateRows", (args: any[]) => {
 			try {
 				if (!isReplaying()) {
 					const ref = args?.[0]
@@ -211,7 +218,7 @@ function installFabric(commands: any) {
 			} catch (error) {
 				// Same rule as the legacy hook: a failure here leaks a name, it never takes the
 				// chat down. The untouched rows go through.
-				console.error("[ScreenshotRedactor] Fabric updateRows hook failed:", error)
+				reportError("[ScreenshotRedactor] Fabric updateRows hook failed:", error)
 			}
 
 			return args
@@ -219,12 +226,12 @@ function installFabric(commands: any) {
 	)
 
 	cleanups.push(
-		revenge.patcher.before(commands, "clearRows", (args: any[]) => {
+		before(commands, "clearRows", (args: any[]) => {
 			try {
 				const tag = tagOf(args?.[0])
 				if (!isReplaying() && tag !== undefined) noteCleared(tag)
 			} catch (error) {
-				console.error("[ScreenshotRedactor] Fabric clearRows hook failed:", error)
+				reportError("[ScreenshotRedactor] Fabric clearRows hook failed:", error)
 			}
 
 			return args
@@ -251,7 +258,7 @@ function installFabric(commands: any) {
 		setChatBridge(undefined)
 	})
 
-	console.log("[ScreenshotRedactor] Fabric chat commands hooked")
+	if (DEBUG) console.log("[ScreenshotRedactor] Fabric chat commands hooked")
 	noteChatManagerPatch("patched (fabric)")
 }
 
@@ -283,7 +290,7 @@ export default function patchChatManager(): () => void {
 	let unsubscribe: (() => void) | undefined
 
 	if (!ensureChatManagerPatched()) {
-		console.log("[ScreenshotRedactor] no chat bridge yet (legacy module absent, Fabric commands not initialized); asking Metro for it")
+		if (DEBUG) console.log("[ScreenshotRedactor] no chat bridge yet (legacy module absent, Fabric commands not initialized); asking Metro for it")
 		noteChatManagerPatch("waiting on Metro")
 
 		const unsubLegacy = subscribeForChatManager()
@@ -315,7 +322,7 @@ export default function patchChatManager(): () => void {
 function install(manager: any) {
 
 	cleanups.push(
-		revenge.patcher.before(manager, "updateRows", (args: any[]) => {
+		before(manager, "updateRows", (args: any[]) => {
 			try {
 				if (!isReplaying()) {
 					const tag = args?.[0]
@@ -348,7 +355,7 @@ function install(manager: any) {
 			} catch (error) {
 				// Never let this take the chat down: on any failure the original JSON goes
 				// through untouched, which is a leak rather than a broken client.
-				console.error("[ScreenshotRedactor] updateRows hook failed:", error)
+				reportError("[ScreenshotRedactor] updateRows hook failed:", error)
 			}
 
 			// A before-hook must return the args array, and outside the try so it survives a
@@ -359,13 +366,13 @@ function install(manager: any) {
 
 	if (typeof manager.clearRows === "function") {
 		cleanups.push(
-			revenge.patcher.before(manager, "clearRows", (args: any[]) => {
+			before(manager, "clearRows", (args: any[]) => {
 				try {
 					// Native sets `rows = null` here, so the next batch will be a full sync. The
 					// mirror has to follow or it will start splicing into a stale list.
 					if (!isReplaying() && typeof args?.[0] === "number") noteCleared(args[0])
 				} catch (error) {
-					console.error("[ScreenshotRedactor] clearRows hook failed:", error)
+					reportError("[ScreenshotRedactor] clearRows hook failed:", error)
 				}
 
 				return args
@@ -383,6 +390,6 @@ function install(manager: any) {
 	})
 	cleanups.push(() => setChatBridge(undefined))
 
-	console.log("[ScreenshotRedactor] DCDChatManager hooked")
+	if (DEBUG) console.log("[ScreenshotRedactor] DCDChatManager hooked")
 	noteChatManagerPatch("patched (legacy)")
 }

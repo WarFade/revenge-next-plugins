@@ -3,6 +3,7 @@ import patchRowManager from "./patches/rowManager"
 import Settings from "./ui/pages/Settings"
 import { CHANGELOG } from "./changelog"
 import { setupChangelog } from "../../../shared/changelog"
+import { reportError, setReporter } from "../../../shared/report"
 
 export default plugin<{ jsonStorage: TimestampStorage }>({
 	jsonStorage: {
@@ -10,6 +11,10 @@ export default plugin<{ jsonStorage: TimestampStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -25,7 +30,7 @@ export default plugin<{ jsonStorage: TimestampStorage }>({
 			try {
 				cleanup(patchRowManager(jsonStorage))
 			} catch (error) {
-				console.error("[CustomTimestamps] failed to patch RowManager:", error)
+				reportError("[CustomTimestamps] failed to patch RowManager:", error)
 			}
 		}, 0)
 		cleanup(() => clearTimeout(installTimer))

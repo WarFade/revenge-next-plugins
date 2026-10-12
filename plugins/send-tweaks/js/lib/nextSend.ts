@@ -1,3 +1,5 @@
+import { reportError } from '../../../../shared/report'
+
 /**
  * A one-off instruction for the very next message, set from the send button's long-press sheet.
  *
@@ -38,7 +40,7 @@ export function sendOnce(kind: OneOff, send: (() => void) | undefined): boolean 
 		return true
 	} catch (error) {
 		pending = undefined
-		console.error('[SendTweaks] one-off send failed:', error)
+		reportError('[SendTweaks] one-off send failed:', error)
 		return false
 	}
 }

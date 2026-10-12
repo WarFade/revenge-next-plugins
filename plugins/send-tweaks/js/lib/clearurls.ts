@@ -19,6 +19,8 @@
 import type { ClearUrlsData, ClearUrlsProvider } from '../types'
 import { debug, getStorage, settings, TAG } from './state'
 
+const DEBUG: boolean = false
+
 /** The official rules file, then its mirror on GitLab. */
 const SOURCES = [
 	'https://rules2.clearurls.xyz/data.minify.json',
@@ -166,7 +168,7 @@ export function updateClearUrls(): Promise<UpdateResult> {
 				return { ok: true, count: providers.length }
 			} catch (error) {
 				lastError = String((error as Error)?.message ?? error)
-				console.warn(`${TAG} ClearURLs download from ${source} failed:`, lastError)
+				if (DEBUG) console.warn(`${TAG} ClearURLs download from ${source} failed:`, lastError)
 			}
 		}
 		return { ok: false, error: lastError }

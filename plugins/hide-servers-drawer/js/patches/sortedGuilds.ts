@@ -1,11 +1,13 @@
 import { isEmpty, isFolderHidden, isHidden } from "../lib/hidden"
+import { Stores } from "@revenge-mod/discord/flux"
+import { after } from "@revenge-mod/patcher"
 
 // Flux stores are looked up by name directly through the Stores proxy, not a module finder
 // filter -- there is no `withStoreName` under modules.finders.filters.
 // Read per call, never at module scope: the Stores proxy resolves via one-shot `lookupModule`,
 // and at preInit that caches a permanent miss on a key shared app-wide.
 // See docs/porting-rules.md rule 1.
-const sortedGuildStore = (): any => (revenge.discord.flux.Stores as any).SortedGuildStore
+const sortedGuildStore = (): any => (Stores as any).SortedGuildStore
 
 // No server-list component resolves reliably by name across builds, so filter at the
 // source instead: everything that draws the list reads it from this store, so removing
@@ -291,7 +293,7 @@ function install(method: string, filter: (value: unknown) => unknown): (() => vo
 		// after's hook receives only the return value (confirmed from revenge-bundle-next's
 		// own patcher source) -- this patch only ever needed the result anyway, so no
 		// conversion to instead is needed here (unlike the other .after( fixes elsewhere).
-		return revenge.patcher.after(sortedGuildStore(), method, (ret: unknown) => {
+		return after(sortedGuildStore(), method, (ret: unknown) => {
 			// Skip the work entirely when nothing is hidden.
 			if (disabled || isEmpty()) return ret
 

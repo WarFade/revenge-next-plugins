@@ -17,6 +17,8 @@
  * list covers the member list, profile sheets, and other resolver-backed surfaces.
  */
 
+import { Stores } from '@revenge-mod/discord/flux'
+
 const STORE_NAMES = [
 	"RelationshipStore",
 	"UserStore",
@@ -72,7 +74,7 @@ function emitOn(store: any): string | undefined {
 export function nudgeStores(): string[] {
 	let stores: any
 	try {
-		stores = revenge.discord.flux.Stores as any
+		stores = Stores as any
 	} catch {
 		return []
 	}

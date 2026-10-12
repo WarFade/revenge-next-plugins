@@ -6,6 +6,11 @@ import { resetTranslations, showingIds } from '../../lib/translations'
 import { sweepNow } from '../../patches/autoTranslate'
 import { FieldGroup } from '../fieldGroup'
 import { useBottomPadding } from '../safeArea'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /**
  * The language picker.
@@ -18,9 +23,8 @@ import { useBottomPadding } from '../safeArea'
  */
 export default function Language() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const React = revenge.react.React
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -28,9 +32,8 @@ export default function Language() {
 		TableRadioGroup,
 		TableRadioRow,
 		TextInput,
-	} = revenge.discord.design.Design
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	} = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { goBack: () => void }
 	const storage = getStorage()

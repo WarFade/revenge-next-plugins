@@ -12,6 +12,14 @@
 import { findMessageSheetGroupParent } from '../../../../shared/messageSheet'
 import { debug, settings, TAG, toast } from '../lib/state'
 import { readableMentions, summarise, textOf } from '../lib/summarise'
+import * as assets from '@revenge-mod/assets'
+import * as actions from '@revenge-mod/discord/actions'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
 
 const SYM_PATCHED = Symbol.for('Patched by TLDR')
 
@@ -26,15 +34,15 @@ function isMessageSheet(key: string) {
 }
 
 function findGroupParent(tree: any): any {
-	return findMessageSheetGroupParent(tree, revenge.discord.design.Design.ActionSheet, ActionSheetRowComponent()?.Group)
+	return findMessageSheetGroupParent(tree, Design.ActionSheet, ActionSheetRowComponent()?.Group)
 }
 
 let actionSheetRow: any
 function ActionSheetRowComponent() {
 	if (!actionSheetRow) {
 		// At sheet time, not start(): a `lookupModule` miss is cached for the session (rule 3).
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetRow = lookupModule<any>(withProps('ActionSheetRow'))?.[0]?.ActionSheetRow
 	}
 	return actionSheetRow
@@ -43,8 +51,8 @@ function ActionSheetRowComponent() {
 type Target = { messageId: string; editedTimestamp: unknown; text: string }
 
 function showResult(title: string, body: string) {
-	const { AlertModal, AlertActionButton } = revenge.discord.design.Design
-	const Alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton } = Design
+	const Alerts = AlertActionCreators
 	const key = 'TldrResult'
 	try {
 		Alerts.openAlert(
@@ -62,7 +70,7 @@ function showResult(title: string, body: string) {
 			/>,
 		)
 	} catch (error) {
-		console.error(`${TAG} could not open the result:`, error)
+		reportError(`${TAG} could not open the result:`, error)
 		toast(body.slice(0, 120))
 	}
 }
@@ -81,7 +89,7 @@ async function run(target: Target) {
 function buildGroup(target: Target) {
 	const ActionSheetRow = ActionSheetRowComponent()
 	if (!ActionSheetRow) return null
-	const { getAssetIdByName } = revenge.assets
+	const { getAssetIdByName } = assets
 
 	return (
 		<ActionSheetRow.Group key="tldr">
@@ -91,13 +99,13 @@ function buildGroup(target: Target) {
 				icon={<ActionSheetRow.Icon source={getAssetIdByName('MagicWandIcon')} />}
 				onPress={() => {
 					try {
-						revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+						actions.ActionSheetActionCreators.hideActionSheet()
 					} catch {
 						/* most rows close the sheet themselves */
 					}
 					// Not awaited: the sheet closes now and the answer opens when it lands.
 					run(target).catch(error => {
-						console.error(`${TAG} summary failed:`, error)
+						reportError(`${TAG} summary failed:`, error)
 						showResult("Couldn't summarise this", 'Something went wrong. See the debug log.')
 					})
 				}}
@@ -135,13 +143,13 @@ function patchSheetModule(mod: any, patches: Array<() => void>) {
 			if (current && rendered != null && !rendered[SYM_PATCHED] && inject(rendered, current))
 				rendered[SYM_PATCHED] = true
 		} catch (error) {
-			console.error(`${TAG} sheet injection failed:`, error)
+			reportError(`${TAG} sheet injection failed:`, error)
 		}
 		return rendered
 	}
 
 	try {
-		patches.push(revenge.patcher.after(mod, 'default', applyTo))
+		patches.push(after(mod, 'default', applyTo))
 		patchedModules.add(mod)
 		return mod
 	} catch {
@@ -149,18 +157,18 @@ function patchSheetModule(mod: any, patches: Array<() => void>) {
 			const Original = mod.default
 			return { ...mod, default: (props: any) => applyTo(Original(props)) }
 		} catch (error) {
-			console.error(`${TAG} could not patch sheet module:`, error)
+			reportError(`${TAG} could not patch sheet module:`, error)
 			return mod
 		}
 	}
 }
 
 export default function patchMessageSheet(): () => void {
-	const { ActionSheetActionCreators } = revenge.discord.actions
+	const { ActionSheetActionCreators } = actions
 	const patches: Array<() => void> = []
 
 	patches.push(
-		revenge.patcher.before(ActionSheetActionCreators as any, 'openLazy', (args: any[]) => {
+		before(ActionSheetActionCreators as any, 'openLazy', (args: any[]) => {
 			try {
 				const [sheet, key, props] = args
 				if (typeof key === 'string') status.lastKey = key
@@ -185,7 +193,7 @@ export default function patchMessageSheet(): () => void {
 					args[0] = sheet.then((mod: any) => patchSheetModule(mod, patches))
 				}
 			} catch (error) {
-				console.error(`${TAG} openLazy hook failed:`, error)
+				reportError(`${TAG} openLazy hook failed:`, error)
 			}
 			// A before-hook must return the args array (porting rule 2).
 			return args

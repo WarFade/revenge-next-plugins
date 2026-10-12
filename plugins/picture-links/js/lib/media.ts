@@ -6,6 +6,10 @@
  * `before` hook in patches/viewerOptions.ts go through the same function.
  */
 
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { Image } from 'react-native'
+import { reportError } from '../../../../shared/report'
+
 export const TAG = '[PictureLinks]'
 export const MEDIA_PATH = 'modules/media_viewer/native/components/openMediaModal.tsx'
 export const FULL_SIZE = 4096
@@ -15,7 +19,7 @@ export const OUR_SOURCE = 'picture_links'
 
 export function mediaModule(): any {
 	try {
-		return (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(MEDIA_PATH)?.[0]
+		return (finders as any).lookupModuleWithImportedPath(MEDIA_PATH)?.[0]
 	} catch {
 		return undefined
 	}
@@ -39,7 +43,7 @@ export function fullSize(url: string, size = FULL_SIZE): string {
 function imageSize(uri: string): Promise<{ width: number; height: number }> {
 	return new Promise(resolve => {
 		try {
-			revenge.react.ReactNative.Image.getSize(
+			Image.getSize(
 				uri,
 				(width: number, height: number) => resolve({ width, height }),
 				() => resolve({ width: FULL_SIZE, height: FULL_SIZE }),
@@ -57,7 +61,7 @@ function imageSize(uri: string): Promise<{ width: number; height: number }> {
 export async function openImage(uri: string, origin?: any) {
 	const openMediaModal = mediaModule()?.openMediaModal
 	if (typeof openMediaModal !== 'function') {
-		console.error(`${TAG} openMediaModal not found`)
+		reportError(`${TAG} openMediaModal not found`)
 		return
 	}
 	const { width, height } = await imageSize(uri)

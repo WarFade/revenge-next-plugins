@@ -2,6 +2,14 @@ import { redactedName } from "../lib/alias"
 import { noteNamePatch, noteResolverSkipped } from "../lib/diagnostics"
 import { isEnabled, settings } from "../lib/state"
 import { findUserObject } from "../lib/userArgs"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModuleWithImportedPath } from "@revenge-mod/discord/utils/modules/finders"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * Redacting names *wherever the client resolves them* — inline `@mentions`, the member list, the
@@ -101,7 +109,7 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 	let pendingUserId: string | undefined
 
 	cleanups.push(
-		revenge.patcher.before(namespace, key, (args: any[]) => {
+		before(namespace, key, (args: any[]) => {
 			try {
 				pendingUserId = findUserObject(args)?.id
 			} catch {
@@ -113,7 +121,7 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 	)
 
 	cleanups.push(
-		revenge.patcher.after(namespace, key, (ret: any) => {
+		after(namespace, key, (ret: any) => {
 			const userId = pendingUserId
 			pendingUserId = undefined
 
@@ -128,13 +136,13 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 				if (!redactResolvedNames) return ret
 
 				if (!redactSelf) {
-					const { UserStore } = revenge.discord.flux.Stores as any
+					const { UserStore } = Stores as any
 					if (UserStore?.getCurrentUser?.()?.id === userId) return ret
 				}
 
 				return redactedName(userId, style)
 			} catch (error) {
-				console.error("[ScreenshotRedactor] name hook failed:", error)
+				reportError("[ScreenshotRedactor] name hook failed:", error)
 			}
 
 			return ret
@@ -143,7 +151,7 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 
 	if (key === "getName") getNameHooked = true
 
-	console.log(`[ScreenshotRedactor] hooked name resolver: ${label}`)
+	if (DEBUG) console.log(`[ScreenshotRedactor] hooked name resolver: ${label}`)
 	noteNamePatch(label)
 }
 
@@ -178,7 +186,7 @@ function patchNamespace(
 			patchOne(host, key, `${key} (${where})`, cleanups)
 			hooked++
 		} catch (error) {
-			console.error(`[ScreenshotRedactor] failed to patch ${key}:`, error)
+			reportError(`[ScreenshotRedactor] failed to patch ${key}:`, error)
 		}
 	}
 
@@ -199,8 +207,8 @@ function patchNamespace(
  * fired" look identical from a settings page, and telling them apart is what took five releases.
  */
 function sweepFor(key: string, seen: Set<any>, cleanups: Array<() => void>): () => void {
-	const { lookupModules, waitForModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModules, waitForModules } = finders
+	const { withProps } = filters
 
 	const onModule = (mod: any, id: unknown) => {
 		if (patchNamespace(mod, `props, module ${String(id)}`, seen, cleanups, key) === 0) {
@@ -211,13 +219,13 @@ function sweepFor(key: string, seen: Set<any>, cleanups: Array<() => void>): () 
 	try {
 		for (const [exports, id] of lookupModules(withProps(key))) onModule(exports, id)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] lookup sweep for ${key} failed:`, error)
+		reportError(`[ScreenshotRedactor] lookup sweep for ${key} failed:`, error)
 	}
 
 	try {
 		return waitForModules(withProps(key), onModule)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] wait sweep for ${key} failed:`, error)
+		reportError(`[ScreenshotRedactor] wait sweep for ${key} failed:`, error)
 		return () => {}
 	}
 }
@@ -233,15 +241,15 @@ export default function patchDisplayName(): () => void {
 	// current build it answers synchronously.
 	try {
 		unsubscribes.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(MODULE_PATH, (mod: any, id: unknown) => {
+			getModuleWithImportedPath(MODULE_PATH, (mod: any, id: unknown) => {
 				if (patchNamespace(mod, `path, module ${String(id)}`, seen, cleanups) === 0) {
-					console.error(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no resolver`)
+					reportError(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no resolver`)
 					noteResolverSkipped(MODULE_PATH)
 				}
 			}),
 		)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
+		reportError(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
 	}
 
 	// Fallback for a build that has moved the file. `seen` makes it a no-op for anything the path

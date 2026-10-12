@@ -3,8 +3,18 @@ import { findMessageSheetGroupParent } from '../../../../shared/messageSheet'
 import { findInReactTree } from "../lib/findInReactTree"
 import { noteInjectOutcome, noteSheetKey, noteSheetPatch, noteSheetType } from "../lib/diagnostics"
 import { refreshChat } from "../lib/chatRows"
+import { showToast } from "../../../../shared/toast"
 import { RELOAD_NOTICE } from "../lib/notices"
 import { getStorage, settings } from "../lib/state"
+import * as assets from '@revenge-mod/assets'
+import * as actions from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /**
  * The quick toggle, as a row in the message long-press sheet.
@@ -71,7 +81,7 @@ function typeNameOf(node: any): string | undefined {
  * *parent* works for both shapes.
  */
 function findGroupParent(tree: any) {
-	return findMessageSheetGroupParent(tree, revenge.discord.design.Design.ActionSheet, ActionSheetRowComponent()?.Group)
+	return findMessageSheetGroupParent(tree, Design.ActionSheet, ActionSheetRowComponent()?.Group)
 }
 
 /** Records every component name in a rendered sheet, so a failed match can be diagnosed. */
@@ -122,8 +132,8 @@ function ActionSheetRowComponent() {
 		// Looked up lazily, at the moment a sheet actually opens, rather than from start():
 		// lookupModule permanently caches a miss, and this module is sheet UI that may not have
 		// loaded yet on a cold launch. By the time a sheet is rendering, it has. See rule 3.
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetRow = lookupModule<any>(withProps("ActionSheetRow"))?.[0]?.ActionSheetRow
 	}
 	return actionSheetRow
@@ -133,7 +143,7 @@ function buildToggleRow() {
 	const ActionSheetRow = ActionSheetRowComponent()
 	if (!ActionSheetRow) return null
 
-	const { getAssetIdByName } = revenge.assets
+	const { getAssetIdByName } = assets
 	const storage = getStorage()
 	const enabled = !!settings().enabled
 
@@ -143,21 +153,18 @@ function buildToggleRow() {
 			storage?.set({ enabled: next })
 			refreshChat()
 
-			revenge.discord.actions.ToastActionCreators.open({
-				key: "ScreenshotRedactorToast",
-				// Shorter than the settings toast -- this one fires with the sheet closing and a
-				// screenshot about to be taken -- but the caveat still has to be on this path.
-				// See `lib/notices.ts` for why one sentence lives in one place.
-				content: next ? "Names hidden." : `Names shown. ${RELOAD_NOTICE}`,
-			})
+			// Shorter than the settings toast -- this one fires with the sheet closing and a
+			// screenshot about to be taken -- but the caveat still has to be on this path.
+			// See `lib/notices.ts` for why one sentence lives in one place.
+			showToast(next ? "Names hidden." : `Names shown. ${RELOAD_NOTICE}`, "ScreenshotRedactorToast")
 		} catch (error) {
-			console.error("[ScreenshotRedactor] sheet toggle failed:", error)
+			reportError("[ScreenshotRedactor] sheet toggle failed:", error)
 		}
 
 		// Close the sheet so the screenshot can be taken immediately, and so the row's own label
 		// isn't left showing a stale state.
 		try {
-			revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+			actions.ActionSheetActionCreators.hideActionSheet()
 		} catch {
 			/* most rows close the sheet themselves; not worth failing the toggle over */
 		}
@@ -205,7 +212,7 @@ function inject(rendered: any): boolean {
 			parent.props.children = [row, children]
 			noteInjectOutcome("inserted beside single row group")
 		}
-		console.log(`[ScreenshotRedactor] row inserted under ${typeNameOf(parent) ?? "?"}`)
+		if (DEBUG) console.log(`[ScreenshotRedactor] row inserted under ${typeNameOf(parent) ?? "?"}`)
 		return true
 	}
 
@@ -215,7 +222,7 @@ function inject(rendered: any): boolean {
 	noteInjectOutcome("failed: no row group inside ActionSheet")
 	// Unconditional, not behind the debug switch: this only runs when the feature has already
 	// failed, and it is the one thing that makes the next attempt something other than a guess.
-	console.log("[ScreenshotRedactor] sheet tree:\n" + dumpSheetTree(rendered).join("\n"))
+	if (DEBUG) console.log("[ScreenshotRedactor] sheet tree:\n" + dumpSheetTree(rendered).join("\n"))
 	return false
 }
 
@@ -236,13 +243,13 @@ function patchSheetModule(mod: any, key: string, patches: Array<() => void>): an
 
 	try {
 		patches.push(
-			revenge.patcher.after(mod, "default", (rendered: any) => {
+			after(mod, "default", (rendered: any) => {
 				try {
 					if (rendered != null && !rendered[SYM_PATCHED] && inject(rendered)) {
 						rendered[SYM_PATCHED] = true
 					}
 				} catch (error) {
-					console.error("[ScreenshotRedactor] sheet injection failed:", error)
+					reportError("[ScreenshotRedactor] sheet injection failed:", error)
 				}
 				return rendered
 			}),
@@ -262,7 +269,7 @@ function patchSheetModule(mod: any, key: string, patches: Array<() => void>): an
 						rendered[SYM_PATCHED] = true
 					}
 				} catch (error) {
-					console.error("[ScreenshotRedactor] sheet injection failed:", error)
+					reportError("[ScreenshotRedactor] sheet injection failed:", error)
 				}
 				return rendered
 			}
@@ -270,20 +277,20 @@ function patchSheetModule(mod: any, key: string, patches: Array<() => void>): an
 			noteSheetPatch(`${key} (copied)`)
 			return { ...mod, default: Wrapped }
 		} catch (error) {
-			console.error("[ScreenshotRedactor] could not patch sheet module:", error)
+			reportError("[ScreenshotRedactor] could not patch sheet module:", error)
 			return mod
 		}
 	}
 }
 
 export default function patchMessageActionSheet(): () => void {
-	const { ActionSheetActionCreators } = revenge.discord.actions
+	const { ActionSheetActionCreators } = actions
 	const patches: Array<() => void> = []
 
 	const enabled = () => (getStorage()?.cache as any)?.showSheetToggle ?? DEFAULTS.showSheetToggle
 
 	patches.push(
-		revenge.patcher.before(ActionSheetActionCreators as any, "openLazy", (args: any[]) => {
+		before(ActionSheetActionCreators as any, "openLazy", (args: any[]) => {
 			try {
 				const [sheet, key] = args
 				// Recorded unconditionally, and before any matching: the whole point is that an
@@ -303,7 +310,7 @@ export default function patchMessageActionSheet(): () => void {
 					args[0] = sheet.then((mod: any) => patchSheetModule(mod, key, patches))
 				}
 			} catch (error) {
-				console.error("[ScreenshotRedactor] openLazy hook failed:", error)
+				reportError("[ScreenshotRedactor] openLazy hook failed:", error)
 			}
 
 			// A before-hook must return the args array -- returning nothing sets args to

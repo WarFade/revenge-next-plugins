@@ -6,9 +6,12 @@
  * wrong shade on a light theme rather than an invisible control.
  */
 
+import { Stores } from '@revenge-mod/discord/flux'
+import * as commonTokens from '@revenge-mod/discord/common/tokens'
+
 function tokenTables(): any {
 	try {
-		return (revenge.discord.common as any).tokens?.Tokens
+		return (commonTokens as any)?.Tokens
 	} catch {
 		return undefined
 	}
@@ -16,7 +19,7 @@ function tokenTables(): any {
 
 function currentTheme(): string {
 	try {
-		const store = (revenge.discord.flux.Stores as any).ThemeStore
+		const store = (Stores as any).ThemeStore
 		const theme = store?.theme ?? store?.getTheme?.()
 		return typeof theme === 'string' ? theme : 'dark'
 	} catch {

@@ -1,6 +1,11 @@
 import { redactedName } from "../lib/alias"
 import { noteNamePatch } from "../lib/diagnostics"
 import { isEnabled, settings } from "../lib/state"
+import { Stores } from "@revenge-mod/discord/flux"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * The DM header, which took six failed attempts and two wrong diagnoses.
@@ -96,7 +101,7 @@ function patchStore(store: any, storeName: string) {
 	let pendingUserId: string | undefined
 
 	cleanups.push(
-		revenge.patcher.before(store, "getNickname", (args: any[]) => {
+		before(store, "getNickname", (args: any[]) => {
 			try {
 				// `getNickname(userId)` on this path. Other call sites pass (userId, guildId) or
 				// a channel id, so only the plain single-snowflake form is claimed — mistaking a
@@ -119,7 +124,7 @@ function patchStore(store: any, storeName: string) {
 	)
 
 	cleanups.push(
-		revenge.patcher.after(store, "getNickname", (ret: any) => {
+		after(store, "getNickname", (ret: any) => {
 			const userId = pendingUserId
 			pendingUserId = undefined
 
@@ -135,20 +140,20 @@ function patchStore(store: any, storeName: string) {
 				if (!redactResolvedNames) return ret
 
 				if (!redactSelf) {
-					const { UserStore } = revenge.discord.flux.Stores as any
+					const { UserStore } = Stores as any
 					if (UserStore?.getCurrentUser?.()?.id === userId) return ret
 				}
 
 				return redactedName(userId, style)
 			} catch (error) {
-				console.error("[ScreenshotRedactor] getNickname hook failed:", error)
+				reportError("[ScreenshotRedactor] getNickname hook failed:", error)
 			}
 
 			return ret
 		}),
 	)
 
-	console.log(`[ScreenshotRedactor] hooked ${storeName}.getNickname`)
+	if (DEBUG) console.log(`[ScreenshotRedactor] hooked ${storeName}.getNickname`)
 	noteNamePatch(`${storeName}.getNickname (store)`)
 }
 
@@ -161,7 +166,7 @@ export function ensureDmHeaderPatched(): boolean {
 
 	let stores: any
 	try {
-		stores = revenge.discord.flux.Stores as any
+		stores = Stores as any
 	} catch {
 		return false
 	}
@@ -176,7 +181,7 @@ export function ensureDmHeaderPatched(): boolean {
 			patchStore(store, storeName)
 			hooked++
 		} catch (error) {
-			console.error(`[ScreenshotRedactor] failed to hook ${storeName}.getNickname:`, error)
+			reportError(`[ScreenshotRedactor] failed to hook ${storeName}.getNickname:`, error)
 		}
 	}
 
@@ -188,7 +193,7 @@ export function ensureDmHeaderPatched(): boolean {
 
 export default function patchDmHeader(): () => void {
 	if (!ensureDmHeaderPatched()) {
-		console.log("[ScreenshotRedactor] no store with getNickname yet; will retry when chat renders")
+		if (DEBUG) console.log("[ScreenshotRedactor] no store with getNickname yet; will retry when chat renders")
 	}
 
 	return () => {

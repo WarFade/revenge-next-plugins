@@ -23,6 +23,12 @@ import { readText } from '../lib/rewrite'
 import { debug, settings } from '../lib/state'
 import { activeTranslation } from '../lib/translations'
 import type { Translation } from '../lib/translations'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /** Reported on the Debug page: whether the hook installed, and whether it has ever rewritten. */
 const status = { installed: false, rewrites: 0 }
@@ -137,11 +143,11 @@ function apply(row: any): void {
  */
 function patchOne(RowManager: any, patches: Array<() => void>) {
 	patches.push(
-		revenge.patcher.after(RowManager.prototype, 'generate', (row: any) => {
+		after(RowManager.prototype, 'generate', (row: any) => {
 			try {
 				apply(row)
 			} catch (error) {
-				console.error('[Translate] row rewrite failed:', error)
+				reportError('[Translate] row rewrite failed:', error)
 			}
 			// Assigned unconditionally by the patcher, so it must be returned on every path.
 			return row
@@ -150,8 +156,8 @@ function patchOne(RowManager: any, patches: Array<() => void>) {
 }
 
 export default function patchRowManager(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	const patches: Array<() => void> = []
 	const seen = new WeakSet<any>()
@@ -170,7 +176,7 @@ export default function patchRowManager(): () => void {
 			patchOne(RowManager, patches)
 			status.installed = true
 			// Log the outcome, not the attempt -- porting rule 3.
-			console.log('[Translate] rewriting rows through a RowManager.generate')
+			if (DEBUG) console.log('[Translate] rewriting rows through a RowManager.generate')
 		},
 		{ max: 10 },
 	)

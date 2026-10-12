@@ -9,9 +9,13 @@ import { FieldRow } from '../fieldGroup'
 import { dangerIcon } from '../icon'
 import { templateSession } from '../templateSession'
 import { EDIT_RULE_ROUTE } from '../routes'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
 
 export function ScopeControls({ value, onChange }: { value?: RuleScope; onChange: (scope: RuleScope) => void }) {
-	const { TableRowGroup, TableRow, TextInput } = revenge.discord.design.Design
+	const { TableRowGroup, TableRow, TextInput } = Design
 	const kind = value?.kind ?? 'all'
 	return <TableRowGroup title="Rule scope">
 		{(['all', 'servers', 'channels', 'dms'] as const).map(mode => <TableRow key={mode} label={`${kind === mode ? '✓ ' : ''}${{ all: 'Everywhere', servers: 'Selected servers', channels: 'Selected channels', dms: 'DMs only' }[mode]}`} onPress={() => onChange({ kind: mode, ids: value?.ids ?? [] })} />)}
@@ -20,11 +24,11 @@ export function ScopeControls({ value, onChange }: { value?: RuleScope; onChange
 }
 
 export function TemplateTools({ initial, apply, mode = 'playground' }: { initial: string; apply?: (text: string) => void; mode?: 'playground' | 'snippets' | 'formats' }) {
-	const { React, ReactNative: { View } } = revenge.react
-	const { Text, TextInput, TextArea, TableRow, TableRowGroup } = revenge.discord.design.Design
+	const { React, ReactNative: { View } } = react
+	const { Text, TextInput, TextArea, TableRow, TableRowGroup } = Design
 	const Input = (TextArea ?? TextInput) as any
 	const s = useSettings()
-	const navigation = revenge.externals.ReactNavigation.ReactNavigationNative.useNavigation() as any
+	const navigation = ReactNavigationNative.useNavigation() as any
 	const [template, setTemplate] = React.useState(initial || '$random{Hai, Hewo, Hey}, {name|friend}!')
 	const [person, setPerson] = React.useState('Alex')
 	const [raw, setRaw] = React.useState(false)
@@ -46,8 +50,8 @@ export function TemplateTools({ initial, apply, mode = 'playground' }: { initial
 		setNotice(`Saved ${name}.`)
 	}
 	const removeSnippet = (name: string) => {
-		const { AlertModal, AlertActionButton } = revenge.discord.design.Design
-		const alerts = revenge.discord.actions.AlertActionCreators
+		const { AlertModal, AlertActionButton } = Design
+		const alerts = AlertActionCreators
 		const key = 'SendTweaksDeleteSnippet'
 		alerts.openAlert(key, <AlertModal title={`Delete ${name}?`} content="Rules using this snippet will need another snippet or replacement text." actions={<><AlertActionButton text="Delete" variant="destructive" onPress={() => { getStorage()?.set({ snippets: (s.snippets ?? []).filter(item => item.name !== name) }); alerts.dismissAlert(key) }} /><AlertActionButton text="Cancel" variant="secondary" onPress={() => alerts.dismissAlert(key)} /></>} />)
 	}

@@ -4,8 +4,11 @@
 // that as "not found"; getModules subscribes and calls back whenever the module loads.
 // The input component is a named `InputView` export on classic Revenge builds, not the
 // module's default -- never destructure a finder result, keep both fallbacks.
+import { getModules } from '@revenge-mod/modules/finders'
+import { withProps } from '@revenge-mod/modules/finders/filters'
+
 let inputModule: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("ClearButtonVisibility"), (mod: any) => {
+getModules(withProps("ClearButtonVisibility"), (mod: any) => {
 	inputModule = mod
 })
 

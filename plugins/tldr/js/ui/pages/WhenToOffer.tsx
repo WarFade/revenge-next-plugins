@@ -3,6 +3,9 @@ import { getStorage } from '../../lib/state'
 import { FieldGroup } from '../fieldGroup'
 import { useBottomPadding } from '../safeArea'
 import type { TldrStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * The one number worth setting. A bare field in the `Stack`, the way Translate's language search
@@ -11,9 +14,9 @@ import type { TldrStorage } from '../../types'
  */
 export default function WhenToOffer() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TextInput } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TextInput } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

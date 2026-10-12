@@ -23,6 +23,15 @@ import { defaultAvatar, TAG } from '../lib/discord'
 import { ReviewType, type UserReviewsData } from '../lib/entities'
 import { ReviewerPile } from '../ui/native'
 import { openReviews } from '../ui/routes'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { after, before } from '@revenge-mod/patcher'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const PATH = 'modules/user_profile/native/UserProfileConnections.tsx'
 const CARD_PATH = 'modules/user_profile/native/UserProfileCard.tsx'
@@ -37,7 +46,7 @@ let profileCard: any
 function ProfileCardComponent(): any {
 	if (profileCard === undefined) {
 		try {
-			const mod = (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(CARD_PATH)?.[0]
+			const mod = (finders as any).lookupModuleWithImportedPath(CARD_PATH)?.[0]
 			profileCard = typeof mod?.default === 'function' ? mod.default : null
 		} catch {
 			profileCard = null
@@ -48,7 +57,7 @@ function ProfileCardComponent(): any {
 
 function usernameOf(userId: string): string {
 	try {
-		const user = (revenge.discord.flux.Stores as any).UserStore?.getUser?.(userId)
+		const user = (Stores as any).UserStore?.getUser?.(userId)
 		return user?.globalName || user?.username || 'User'
 	} catch {
 		return 'User'
@@ -56,8 +65,8 @@ function usernameOf(userId: string): string {
 }
 
 function AvatarStack({ data }: { data: UserReviewsData }) {
-	const { View, Image } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View, Image } = ReactNative
+	const { Text } = Design as any
 	const reviews = data.reviews.filter(r => r.id !== 0).slice(0, 4)
 	return (
 		<View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -103,8 +112,7 @@ function Reviewers({ data }: { data: UserReviewsData }) {
 }
 
 function ReviewsCard({ userId }: { userId: string }) {
-	const React = revenge.react.React
-	const { TableRowGroup, TableRow, Card, Text } = revenge.discord.design.Design as any
+	const { TableRowGroup, TableRow, Card, Text } = Design as any
 	const [data, setData] = React.useState<UserReviewsData | null>(() => cache.get(userId)?.data ?? null)
 
 	React.useEffect(() => {
@@ -119,7 +127,7 @@ function ReviewsCard({ userId }: { userId: string }) {
 				cache.set(userId, { at: Date.now(), data: res })
 				if (alive) setData(res)
 			})
-			.catch(error => console.error(`${TAG} profile card fetch failed:`, error))
+			.catch(error => reportError(`${TAG} profile card fetch failed:`, error))
 		return () => {
 			alive = false
 		}
@@ -180,7 +188,6 @@ function findCardList(element: any, depth = 0): { count: number; path: number[] 
 }
 
 function withCard(element: any, path: number[], card: any): any {
-	const React = revenge.react.React
 	const children = element.props.children
 	if (!path.length) return React.cloneElement(element, { children: [...children, card] })
 	const [i, ...rest] = path
@@ -207,15 +214,15 @@ export default function patchProfileCard(): () => void {
 	const apply = (mod: any) => {
 		try {
 			if (typeof mod?.[TARGET] !== 'function') {
-				console.error(`${TAG} ${TARGET} not found on ${PATH}; the profile card is off.`)
+				reportError(`${TAG} ${TARGET} not found on ${PATH}; the profile card is off.`)
 				return
 			}
 			patches.push(
-				revenge.patcher.before(mod, TARGET, (args: any[]) => {
+				before(mod, TARGET, (args: any[]) => {
 					lastProps = args?.[0]
 					return args
 				}),
-				revenge.patcher.after(mod, TARGET, (ret: any) => {
+				after(mod, TARGET, (ret: any) => {
 					const props = lastProps
 					lastProps = undefined
 					const userId = props?.userId
@@ -231,21 +238,21 @@ export default function patchProfileCard(): () => void {
 							card
 						)
 					} catch (error) {
-						console.error(`${TAG} profile card render failed:`, error)
+						reportError(`${TAG} profile card render failed:`, error)
 						return ret
 					}
 				}),
 			)
-			console.log(`${TAG} hooked ${TARGET}`)
+			if (DEBUG) console.log(`${TAG} hooked ${TARGET}`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook the profile:`, error)
+			reportError(`${TAG} failed to hook the profile:`, error)
 		}
 	}
 
 	try {
-		unsubscribe = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(PATH, apply)
+		unsubscribe = (finders as any).getModuleWithImportedPath(PATH, apply)
 	} catch (error) {
-		console.error(`${TAG} profile lookup failed:`, error)
+		reportError(`${TAG} profile lookup failed:`, error)
 	}
 
 	let lastBotProps: any
@@ -254,15 +261,15 @@ export default function patchProfileCard(): () => void {
 		try {
 			const memo = mod?.default
 			if (typeof memo?.type !== 'function') {
-				console.error(`${TAG} BotUserProfileContent not found on ${BOT_PATH}; no card on bot profiles.`)
+				reportError(`${TAG} BotUserProfileContent not found on ${BOT_PATH}; no card on bot profiles.`)
 				return
 			}
 			patches.push(
-				revenge.patcher.before(memo, 'type', (args: any[]) => {
+				before(memo, 'type', (args: any[]) => {
 					lastBotProps = args?.[0]
 					return args
 				}),
-				revenge.patcher.after(memo, 'type', (ret: any) => {
+				after(memo, 'type', (ret: any) => {
 					const props = lastBotProps
 					lastBotProps = undefined
 					const userId = props?.user?.id
@@ -270,20 +277,20 @@ export default function patchProfileCard(): () => void {
 					try {
 						return appendToCardList(ret, <ReviewsCard key="reviewdb-card" userId={userId} />) ?? ret
 					} catch (error) {
-						console.error(`${TAG} bot profile card render failed:`, error)
+						reportError(`${TAG} bot profile card render failed:`, error)
 						return ret
 					}
 				}),
 			)
-			console.log(`${TAG} hooked BotUserProfileContent`)
+			if (DEBUG) console.log(`${TAG} hooked BotUserProfileContent`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook bot profiles:`, error)
+			reportError(`${TAG} failed to hook bot profiles:`, error)
 		}
 	}
 	try {
-		unsubscribeBot = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(BOT_PATH, applyBot)
+		unsubscribeBot = (finders as any).getModuleWithImportedPath(BOT_PATH, applyBot)
 	} catch (error) {
-		console.error(`${TAG} bot profile lookup failed:`, error)
+		reportError(`${TAG} bot profile lookup failed:`, error)
 	}
 
 	return () => {

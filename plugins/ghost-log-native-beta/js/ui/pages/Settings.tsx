@@ -5,16 +5,22 @@ import { useLog, useStorageStatus } from '../state'
 import { useEdits } from '../../lib/edits'
 import { allSavedMedia, formatBytes } from '../../lib/media'
 import { useChangelog } from '../../../../../shared/changelog'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
+
+const DEBUG: boolean = false
 
 /**
  * Root page. The warning card (this is a message logger), then what has been caught, then how it is
  * caught and kept, then the licence and the developer page.
  */
 export default function Settings() {
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableRow } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	// The changelog icon at the top right, and "What's new" once after an update.
@@ -136,7 +142,7 @@ export default function Settings() {
 						/>
 					</TableRowGroup>
 
-					<TableRowGroup title="Developer" hasIcons>
+					{DEBUG && (<TableRowGroup title="Developer" hasIcons>
 						<TableRow
 							label="Debug"
 							subLabel="Message-load probe for the restore feature"
@@ -144,7 +150,7 @@ export default function Settings() {
 							arrow
 							onPress={() => navigation.navigate(DEBUG_ROUTE)}
 						/>
-					</TableRowGroup>
+					</TableRowGroup>)}
 				</Stack>
 			</ScrollView>
 		</Page>

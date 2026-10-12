@@ -5,6 +5,12 @@ import { DEBUG_ROUTE, OPTIONS_ROUTE } from '../routes'
 import { useBottomPadding } from '../safeArea'
 import type { CatchUpStorage } from '../../types'
 import { useChangelog } from '../../../../../shared/changelog'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
+
+const DEBUG: boolean = false
 
 /**
  * Root index. The card explains the one thing that surprises people about this plugin: it can
@@ -18,12 +24,10 @@ export default function Settings({
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableRow } =
-		revenge.discord.design.Design
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	const s = { ...DEFAULTS, ...(api.jsonStorage.use() ?? {}) }
@@ -80,7 +84,7 @@ export default function Settings({
 						/>
 					</TableRowGroup>
 
-					<TableRowGroup title="Developer" hasIcons>
+					{DEBUG && (<TableRowGroup title="Developer" hasIcons>
 						<TableRow
 							label="Debug"
 							subLabel="Command registration and logging"
@@ -88,7 +92,7 @@ export default function Settings({
 							arrow
 							onPress={() => navigation.navigate(DEBUG_ROUTE)}
 						/>
-					</TableRowGroup>
+					</TableRowGroup>)}
 				</Stack>
 			</ScrollView>
 		</Page>

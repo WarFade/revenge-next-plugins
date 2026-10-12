@@ -3,6 +3,7 @@ import Settings from './ui/Settings'
 import { setStorage } from './ui/state'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export default plugin<{ jsonStorage: LiveMarkdownStorage }>({
 	jsonStorage: {
@@ -10,6 +11,10 @@ export default plugin<{ jsonStorage: LiveMarkdownStorage }>({
 		default: DEFAULTS,
 	},
 	start({ jsonStorage, cleanup, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// The changelog: clock icon on the settings page, "What's new" after an update.
 		cleanup(setupChangelog({ plugin, jsonStorage }, CHANGELOG))
 		setStorage(jsonStorage)
@@ -18,7 +23,7 @@ export default plugin<{ jsonStorage: LiveMarkdownStorage }>({
 			.then((state: LiveMarkdownStorage) => {
 				if (state && typeof state.headings === 'boolean') jsonStorage.set({ ...state })
 			})
-			.catch(error => console.error('[LiveMarkdown] getSettings failed:', error))
+			.catch(error => reportError('[LiveMarkdown] getSettings failed:', error))
 	},
 	SettingsComponent: Settings,
 })

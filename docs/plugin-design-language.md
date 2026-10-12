@@ -94,7 +94,9 @@ Primary primitives (in order):
 
 1. `TableRowGroup`
 2. `TableRow` / `TableSwitchRow` / `TableRadioGroup`
-3. `Card` (only for context blocks or genuinely custom controls)
+3. `Card` (only for context blocks: the intro, warning and notice cards in §4)
+
+Custom controls (text fields, sliders, steppers) are **not** Cards: they go inside a row (§3.6).
 
 Why: row primitives already match Discord/Revenge settings language and reduce visual drift.
 
@@ -165,11 +167,11 @@ colours), white text or glyphs on a saturated fill (badges, the armed red toggle
 low-opacity washes of a feedback hue that read on both themes (the yellow warning card in §4.1,
 message highlights). A fixed dark-grey surface or a light-grey text colour is never fine.
 
-## 3.6 Text fields sit in a row
+## 3.6 Text fields and sliders sit in a row
 
-A text field on a settings page goes inside a real settings row, so it has the same background,
-corners and spacing as the row groups around it. Use `FieldGroup` / `FieldRow` (`shared/ui/fieldGroup.tsx`,
-re-exported from each plugin's `js/ui/fieldGroup.tsx`):
+A text field or slider on a settings page goes inside a real settings row, so it has the same
+background, corners and spacing as the row groups around it. Use `FieldGroup` / `FieldRow`
+(`shared/ui/fieldGroup.tsx`, re-exported from each plugin's `js/ui/fieldGroup.tsx`):
 
 ```tsx
 <FieldGroup
@@ -190,7 +192,32 @@ re-exported from each plugin's `js/ui/fieldGroup.tsx`):
 - **Exceptions, left bare:** a search or filter box at the top of a list, and a field inside an
   alert dialog (`AlertModal` `extraContent`), which already has the dialog's surface.
 
-Why: confirmed on the phone (Cloud Backup, 2026-09-30). A plain `View` inside a `TableRowGroup`
+**Sliders** use the same row. The row's label names the setting and shows its current value; the
+explanation is muted text above the slider, inside the row; stop labels (if any) go under it:
+
+```tsx
+<TableRowGroup>
+	<FieldRow label={`Torch size — ${size} dp`}>
+		<Text color="text-muted" variant="text-sm/normal">How far the torch's light reaches.</Text>
+		<Slider step={10} value={size} minimumValue={50} maximumValue={260} onValueChange={…} />
+	</FieldRow>
+</TableRowGroup>
+```
+
+- The value lives in the row label, not the group title: the group title is only for a section
+  heading shared by several rows ("Adjust" over Dim and Blur).
+- Related sliders share one group, one `FieldRow` each.
+- A slider whose steps have names (Off · Subtle · Normal · Strong, Rare · Sometimes · Often) shows
+  them as a row of `text-xs` labels under it, the selected one `text-default` semibold, the rest
+  `text-muted`. Prefer named steps over a raw number when the number means nothing to a user.
+- A slider that replaces an on/off switch puts **Off** at its first stop and keeps the old boolean
+  behind it, so Quick Toggles and saved settings still work (VFX Tap effects, Shimeji's how-often
+  sliders).
+- Never a bare `View` or a `Card` around a slider: same reason as text fields, below. Fixed
+  2026-10-06 in AI Core, Catch Up, Character Counter, Night Light, Second Thoughts, Shimeji, Text
+  Animation, Text Brightness, Themes, Tilt Physics and VFX.
+
+Why: confirmed on the phone (Cloud Backup, 2026-09-30; sliders reported 2026-10-06). A plain `View` inside a `TableRowGroup`
 has no background at all, because a group paints nothing and each `TableRow` paints itself. A
 `Card` matched on Discord's own themes but drifted to another shade under custom themes, which
 recolour rows and cards through different tokens. A row is the only surface that always matches.
@@ -361,7 +388,8 @@ Before shipping a new plugin settings UI, verify:
 8. Labels and sub-labels explain behavior plainly.
 9. Nothing the plugin draws itself uses a fixed surface or text colour; it looks right on the
    Light theme as well as Dark (§3.5).
-10. Every text field except search boxes and dialog fields is in a `FieldGroup` row (§3.6).
+10. Every text field (except search boxes and dialog fields) and every slider is in a
+    `FieldGroup` / `FieldRow` row, never a bare `View` or a `Card` (§3.6).
 11. Avatars, tags, inputs and empty states use Discord's own component, with the hand-drawn
     version as the fallback (§3.7).
 12. Every destructive row has `variant="danger"` and a `dangerIcon(...)` icon (§3.8).

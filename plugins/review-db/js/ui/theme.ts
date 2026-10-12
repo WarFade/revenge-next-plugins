@@ -1,9 +1,12 @@
 // Theme-token colours for the few things this plugin draws itself. Same resolver as
 // hide-servers-drawer/js/ui/theme.ts (see docs/plugin-design-language.md 3.5).
 
+import { Stores } from '@revenge-mod/discord/flux'
+import * as commonTokens from '@revenge-mod/discord/common/tokens'
+
 function tokenTables(): any {
 	try {
-		return (revenge.discord.common as any).tokens?.Tokens
+		return (commonTokens as any)?.Tokens
 	} catch {
 		return undefined
 	}
@@ -12,7 +15,7 @@ function tokenTables(): any {
 /** The theme actually in use ('dark', 'light', 'midnight', 'darker', 'ash', …). */
 function currentTheme(): string {
 	try {
-		const store = (revenge.discord.flux.Stores as any).ThemeStore
+		const store = (Stores as any).ThemeStore
 		const theme = store?.theme ?? store?.getTheme?.()
 		return typeof theme === "string" ? theme : "dark"
 	} catch {

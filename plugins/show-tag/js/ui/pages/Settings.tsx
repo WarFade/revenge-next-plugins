@@ -1,5 +1,8 @@
 import { DEFAULTS, type ShowTagStorage } from "../../index"
 import { useChangelog } from "../../../../../shared/changelog"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
 
 export default function Settings({
 	api,
@@ -9,9 +12,9 @@ export default function Settings({
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { TableRowGroup, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { TableRowGroup, TableSwitchRow } = Design
 
 	const { onlyUsername } = api.jsonStorage.use() ?? DEFAULTS
 

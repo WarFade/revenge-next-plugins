@@ -15,6 +15,7 @@
 
 import { normalize } from './rules'
 import { getAi } from './state'
+import { reportError } from '../../../../shared/report'
 
 export type TopicDraft =
 	| { ok: true; name: string; words: string[] }
@@ -60,7 +61,7 @@ export async function draftTopic(description: string): Promise<TopicDraft> {
 			timeoutMs: 30_000,
 		})
 	} catch (error) {
-		console.error('[Veil] AI rule request failed:', error)
+		reportError('[Veil] AI rule request failed:', error)
 	}
 	if (!answer || typeof answer !== 'object') {
 		return { ok: false, error: 'No usable answer came back. Try again, or describe it differently.' }

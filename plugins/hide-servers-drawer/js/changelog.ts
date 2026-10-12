@@ -3,6 +3,18 @@ import type { ChangelogEntry } from '../../../shared/changelog'
 /** Newest first. Every version users got gets an entry; see shared/changelog.tsx. */
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '1.6.11',
+		date: '2026-10-13',
+		title: 'Tidy-up',
+		changes: ['Errors now show in the Revenge plugin list instead of only the log, and the developer Debug page is gone from normal builds.'],
+	},
+	{
+		version: '1.6.10',
+		date: '2026-10-13',
+		title: 'Discord 350.4',
+		changes: ['Pop-up messages work on Discord 350.4. Before, showing one could crash Discord.'],
+	},
+	{
 		version: '1.6.9',
 		date: '2026-10-04',
 		title: 'Discord 349.5',

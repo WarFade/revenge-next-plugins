@@ -11,6 +11,11 @@ import { AI_SETTINGS_ROUTE, MANAGE_ROUTE, SETTINGS_ROUTE } from '../routes'
 import { useBottomPadding } from '../safeArea'
 import type { Entry } from '../../types'
 import type { TileState } from '../components/Tiles'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 /** The most each page shows as tiles. Four is a 2×2 block: big, and still one glance. */
 export const MAX_FAVOURITES = 4
@@ -48,12 +53,11 @@ export const byName = (list: Entry[]) =>
 
 function HubPage({ ai }: { ai: boolean }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Page } = revenge.components
-	const { ScrollView, View, Pressable } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow } = revenge.discord.design.Design
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	const { React } = react
+	const { Page } = components
+	const { ScrollView, View, Pressable } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as {
 		navigate: (route: string) => void
@@ -288,7 +292,7 @@ function CornLayout({
 	orphanCount: number
 	onManage: () => void
 }) {
-	const { ScrollView, View, Pressable, Text: RNText } = revenge.react.ReactNative
+	const { ScrollView, View, Pressable, Text: RNText } = ReactNative
 	const bottom = useBottomPadding()
 	const heading = { color: CORN.orange, fontSize: 13, fontWeight: '700' as const, letterSpacing: 0.5 }
 

@@ -1,4 +1,6 @@
 import { callNativeMethod } from './native'
+import * as react from '@revenge-mod/react'
+import { reportError } from '../../../../shared/report'
 
 const ID = 'bleelblep.ghost-log-native-beta'
 const TAG = '[GhostLogNativeBeta]'
@@ -84,7 +86,7 @@ export async function refreshEdits(): Promise<EditRecord[]> {
 		for (const record of records) if (record?.id) byId.set(record.id, record)
 		rebuildOrder()
 	} catch (error) {
-		console.error(`${TAG} getEdits failed:`, error)
+		reportError(`${TAG} getEdits failed:`, error)
 	} finally {
 		loading = false
 		notify()
@@ -125,7 +127,7 @@ export function captureEdit(edit: EditCapture) {
 				notify()
 			}
 		})
-		.catch(error => console.error(`${TAG} captureEdit failed:`, error))
+		.catch(error => reportError(`${TAG} captureEdit failed:`, error))
 }
 
 /** Takes one message's edit history out of the log, here and in native. */
@@ -133,7 +135,7 @@ export async function removeEditRecord(messageId: string): Promise<void> {
 	try {
 		await callNativeMethod(`${ID}.removeEdit`, [messageId])
 	} catch (error) {
-		console.error(`${TAG} removeEdit failed:`, error)
+		reportError(`${TAG} removeEdit failed:`, error)
 	}
 	byId.delete(messageId)
 	rebuildOrder()
@@ -144,7 +146,7 @@ export async function clearEdits(): Promise<void> {
 	try {
 		await callNativeMethod(`${ID}.clearEdits`, [])
 	} catch (error) {
-		console.error(`${TAG} clearEdits failed:`, error)
+		reportError(`${TAG} clearEdits failed:`, error)
 	}
 	byId.clear()
 	ordered = []
@@ -153,7 +155,7 @@ export async function clearEdits(): Promise<void> {
 
 /** React hook: the edit list, loaded on first mount and kept current. */
 export function useEdits(): EditRecord[] {
-	const { React } = revenge.react
+	const { React } = react
 	const [records, setRecords] = React.useState<EditRecord[]>(getEdits())
 
 	React.useEffect(() => {

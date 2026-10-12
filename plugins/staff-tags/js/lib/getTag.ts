@@ -1,5 +1,9 @@
 import { iconById } from "./icons"
 import { overrideFor } from "./state"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { reportError } from "../../../../shared/report"
 
 // Revenge Next's preInit phase runs before Discord's own module registry is populated --
 // resolving modules/stores at module top level (like classic Revenge/Vendetta code did) can
@@ -20,10 +24,10 @@ function lazy<T>(resolve: () => T): () => T {
 }
 
 const tagModule = lazy(
-	() => revenge.modules.finders.lookupModule<any>(revenge.modules.finders.filters.withProps("getBotLabel"))?.[0],
+	() => finders.lookupModule<any>(filters.withProps("getBotLabel"))?.[0],
 )
 
-const guildMemberStore = lazy(() => (revenge.discord.flux.Stores as any).GuildMemberStore)
+const guildMemberStore = lazy(() => (Stores as any).GuildMemberStore)
 
 /**
  * `revenge.discord.common.chroma` doesn't exist -- confirmed from revenge-bundle-next's own
@@ -47,8 +51,8 @@ function isDarkColor(hex: string): boolean {
 // try the known export names in order rather than assuming one. Never destructure a finder
 // result directly.
 const computePermissionsFn = lazy(() => {
-	const { lookupModule } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModule } = finders
+	const { withProps } = filters
 
 	const PermissionUtils =
 		lookupModule<any>(withProps("computePermissionsForMember"))?.[0] ??
@@ -213,11 +217,9 @@ let warned = false
 function warnIfBroken(permissionsInt: bigint | undefined) {
 	if (warned || permissionsInt !== undefined) return
 	warned = true
-	console.error(
-		"[StaffTags] could not compute permissions" +
+	reportError("[StaffTags] could not compute permissions" +
 			` (helper=${typeof computePermissionsFn()}, workingShape=${workingShape}).` +
-			" ADMIN/STAFF/MOD tags will not appear.",
-	)
+			" ADMIN/STAFF/MOD tags will not appear.")
 }
 
 export default function getTag(

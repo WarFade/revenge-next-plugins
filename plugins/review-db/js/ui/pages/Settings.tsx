@@ -12,14 +12,18 @@ import { confirm } from '../../lib/discord'
 import { currentUserId, logOut, useSettings } from '../../lib/state'
 import { ABOUT_ROUTE, BLOCKED_ROUTE, OPTIONS_ROUTE } from '../routes'
 import { useChangelog } from '../../../../../shared/changelog'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 export default function Settings() {
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableRow } = revenge.discord.design.Design as any
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow } = Design as any
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 
 	const s = useSettings()

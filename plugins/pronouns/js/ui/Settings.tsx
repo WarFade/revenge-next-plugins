@@ -3,6 +3,9 @@ import { rowIcon } from '../../../../shared/ui/icon'
 import { useBottomPadding } from '../../../../shared/ui/safeArea'
 import { entries, removeFromList } from '../lib/filter'
 import { update, useSettings, type FilterMode } from '../lib/state'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 const LISTS = {
 	only: {
@@ -22,9 +25,9 @@ const LISTS = {
 export default function Settings() {
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow, TableRadioGroup, TableRadioRow } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow, TableRadioGroup, TableRadioRow } = Design as any
 	const s = useSettings()
 	const list = s.filterMode === 'only' || s.filterMode === 'except' ? LISTS[s.filterMode] : undefined
 	const people = list ? entries(s[list.key]) : []

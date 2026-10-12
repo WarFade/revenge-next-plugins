@@ -28,6 +28,7 @@ import { registerPages } from './ui/routes'
 import type { TranslateStorage } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { TranslateStorage }
@@ -39,6 +40,10 @@ export default plugin<{ jsonStorage: TranslateStorage }>({
 	},
 
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		if (plugin.startedLate) {
 			plugin.requireReload()
 			return
@@ -52,7 +57,7 @@ export default plugin<{ jsonStorage: TranslateStorage }>({
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error('[Translate] failed to register settings pages:', error)
+			reportError('[Translate] failed to register settings pages:', error)
 		}
 
 		// Applied independently -- one moved Discord module should cost one surface, not all of
@@ -62,7 +67,7 @@ export default plugin<{ jsonStorage: TranslateStorage }>({
 			try {
 				cleanup(patch())
 			} catch (error) {
-				console.error(`[Translate] failed to apply ${name}:`, error)
+				reportError(`[Translate] failed to apply ${name}:`, error)
 			}
 		}
 

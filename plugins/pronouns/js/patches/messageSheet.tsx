@@ -14,6 +14,14 @@ import { showToast } from '../../../../shared/toast'
 import { isOnActiveList, setOnActiveList } from '../lib/filter'
 import { resolve } from '../lib/resolve'
 import { settings, update } from '../lib/state'
+import * as assets from '@revenge-mod/assets'
+import * as actions from '@revenge-mod/discord/actions'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after, before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
 
 const TAG = '[Pronouns]'
 
@@ -26,8 +34,8 @@ function ActionSheetRowComponent() {
 	if (!actionSheetRow) {
 		// Looked up lazily, at the moment a sheet actually opens: lookupModule permanently caches
 		// a miss, and this module is sheet UI that may not have loaded yet on a cold launch.
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		actionSheetRow = lookupModule<any>(withProps('ActionSheetRow'))?.[0]?.ActionSheetRow
 	}
 	return actionSheetRow
@@ -56,8 +64,8 @@ function findMessage(rendered: any, fromProps?: any): any {
 }
 
 function promptOverride(message: any) {
-	const { AlertModal, AlertActionButton, TextInput } = revenge.discord.design.Design as any
-	const alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton, TextInput } = Design as any
+	const alerts = AlertActionCreators
 	const key = 'PronounsOverride'
 	const authorId = String(message.author?.id ?? '')
 	if (!authorId) return
@@ -73,7 +81,7 @@ function promptOverride(message: any) {
 			update({ overrides: { ...settings().overrides, [authorId]: text || null } })
 			showToast(text ? `Pronouns for ${authorName} set.` : `Pronouns for ${authorName} cleared.`, 'PronounsOverrideToast')
 		} catch (error) {
-			console.error(`${TAG} saving the override failed:`, error)
+			reportError(`${TAG} saving the override failed:`, error)
 		}
 	}
 	alerts.openAlert(
@@ -118,13 +126,13 @@ function buildRow(message: any) {
 	const authorId = String(message?.author?.id ?? '')
 	if (!authorId) return null
 
-	const { getAssetIdByName } = revenge.assets
+	const { getAssetIdByName } = assets
 	const existing = settings().overrides?.[authorId]
 	const label = typeof existing === 'string' ? `Pronouns: ${existing}` : 'Pronouns…'
 
 	const onPress = () => {
 		try {
-			revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+			actions.ActionSheetActionCreators.hideActionSheet()
 		} catch {
 			/* most rows close the sheet themselves; not worth failing the dialog over */
 		}
@@ -153,10 +161,10 @@ function filterRow(message: any, ActionSheetRow: any) {
 	const listed = isOnActiveList(authorId)
 	// On the show list = shown; on the hide list = hidden.
 	const shown = mode === 'only' ? listed : !listed
-	const { getAssetIdByName } = revenge.assets
+	const { getAssetIdByName } = assets
 	const onPress = () => {
 		try {
-			revenge.discord.actions.ActionSheetActionCreators.hideActionSheet()
+			actions.ActionSheetActionCreators.hideActionSheet()
 		} catch {
 			/* see buildRow */
 		}
@@ -164,7 +172,7 @@ function filterRow(message: any, ActionSheetRow: any) {
 			setOnActiveList(authorId, authorName, !listed)
 			showToast(shown ? `Hiding pronouns for ${authorName}.` : `Showing pronouns for ${authorName}.`, 'PronounsFilterToast')
 		} catch (error) {
-			console.error(`${TAG} updating the list failed:`, error)
+			reportError(`${TAG} updating the list failed:`, error)
 		}
 	}
 	return (
@@ -180,7 +188,7 @@ function filterRow(message: any, ActionSheetRow: any) {
 function inject(rendered: any, message: any): boolean {
 	const row = buildRow(message)
 	if (!row) return false
-	const { ActionSheet } = revenge.discord.design.Design as any
+	const { ActionSheet } = Design as any
 	const parent = findMessageSheetGroupParent(rendered, ActionSheet, ActionSheetRowComponent()?.Group)
 	if (!parent) return false
 	const children = parent.props.children
@@ -203,17 +211,17 @@ function patchSheetModule(mod: any, patches: Array<() => void>): any {
 	let pendingMessage: any
 
 	patches.push(
-		revenge.patcher.before(mod, 'default', (args: any[]) => {
+		before(mod, 'default', (args: any[]) => {
 			pendingMessage = args?.[0]?.message
 			return args
 		}),
 	)
 	patches.push(
-		revenge.patcher.after(mod, 'default', (rendered: any) => {
+		after(mod, 'default', (rendered: any) => {
 			try {
 				if (rendered != null) inject(rendered, pendingMessage ?? findMessage(rendered, pendingMessage))
 			} catch (error) {
-				console.error(`${TAG} sheet injection failed:`, error)
+				reportError(`${TAG} sheet injection failed:`, error)
 			}
 			pendingMessage = undefined
 			return rendered
@@ -224,11 +232,11 @@ function patchSheetModule(mod: any, patches: Array<() => void>): any {
 }
 
 export default function patchMessageSheet(): () => void {
-	const { ActionSheetActionCreators } = revenge.discord.actions
+	const { ActionSheetActionCreators } = actions
 	const patches: Array<() => void> = []
 
 	patches.push(
-		revenge.patcher.before(ActionSheetActionCreators as any, 'openLazy', (args: any[]) => {
+		before(ActionSheetActionCreators as any, 'openLazy', (args: any[]) => {
 			try {
 				const [sheet, key] = args
 				if (typeof key === 'string' && isMessageSheet(key) && sheet && typeof sheet.then === 'function') {
@@ -238,7 +246,7 @@ export default function patchMessageSheet(): () => void {
 					args[0] = sheet.then((mod: any) => patchSheetModule(mod, patches))
 				}
 			} catch (error) {
-				console.error(`${TAG} openLazy hook failed:`, error)
+				reportError(`${TAG} openLazy hook failed:`, error)
 			}
 			// A before-hook must return the args array -- returning nothing sets args to
 			// undefined for every later hook. Outside the try so it survives a throw above.

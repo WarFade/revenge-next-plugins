@@ -21,6 +21,7 @@
 
 import { setLength } from './length'
 import { wrapRender } from './wrapRender'
+import * as React from 'react'
 
 const PATH = 'modules/chat_input/native/accessories/ChatInputCharCounter.tsx'
 
@@ -33,7 +34,6 @@ export function patchCounter(): () => void {
 			// it is `props.ref`, and Discord's useImperativeHandle reads it from there.
 			const ref = props?.ref ?? legacyRef
 			// Hooks first, always in the same order, then Discord's own render (its hooks follow ours).
-			const React = revenge.react.React
 			const passRef = React.useCallback(
 				(handle: any) => {
 					if (handle && typeof handle.onMessageLengthChanged === 'function' && !handle.__charCounter) {

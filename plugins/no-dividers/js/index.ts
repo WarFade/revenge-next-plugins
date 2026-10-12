@@ -14,6 +14,9 @@
 import { setupChangelog } from '../../../shared/changelog'
 import { CHANGELOG } from './changelog'
 import Settings from './ui/Settings'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { reportError, setReporter } from '../../../shared/report'
 
 const EXPORT = 'TableRowDivider'
 
@@ -25,6 +28,10 @@ export default plugin({
 	// Only for the changelog's last-seen version (shared/changelog.tsx).
 	jsonStorage: { load: true, default: {} },
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		cleanup(setupChangelog({ plugin, jsonStorage }, CHANGELOG))
 		let host: any
 		let original: unknown
@@ -42,8 +49,8 @@ export default plugin({
 			target[EXPORT] = NoDivider
 		}
 
-		const { getModules } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { getModules } = finders
+		const { withProps } = filters
 		// One module has this export; max 1 so the lookup and the wait for it share nothing else
 		// (a broad filter can spend `max` on the lookup and never subscribe).
 		const unsubscribe = getModules(
@@ -52,7 +59,7 @@ export default plugin({
 				try {
 					install(exports)
 				} catch (error) {
-					console.error('[NoDividers] could not replace the divider:', error)
+					reportError('[NoDividers] could not replace the divider:', error)
 				}
 			},
 			{ max: 1 },

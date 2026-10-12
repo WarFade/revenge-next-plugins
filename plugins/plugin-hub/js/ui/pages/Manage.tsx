@@ -11,6 +11,10 @@ import { dangerIcon, rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { Installed } from '../../lib/installed'
 import type { Entry } from '../../types'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * Choosing what the hub shows.
@@ -30,8 +34,8 @@ import type { Entry } from '../../types'
  */
 export default function Manage() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -41,8 +45,8 @@ export default function Manage() {
 		TableSwitchRow,
 		AlertModal,
 		AlertActionButton,
-	} = revenge.discord.design.Design
-	const Alerts = revenge.discord.actions.AlertActionCreators
+	} = Design
+	const Alerts = AlertActionCreators
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

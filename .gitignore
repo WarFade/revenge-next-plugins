@@ -69,3 +69,7 @@ plugins/themes/
 plugins/review-db/
 
 # Local-only until the user says to publish it.
+plugins/ai-core-local/
+
+# Ground-up Ghost Log rewrite prototype. Local-only until it can replace ghost-log-native-beta.
+plugins/ghost-log-ng/

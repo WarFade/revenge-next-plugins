@@ -1,5 +1,6 @@
 import IconPicker from './pages/IconPicker'
 import TagEditor from './pages/TagEditor'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
 
 const PREFIX = 'bleelblep.staff-tags'
 
@@ -12,7 +13,7 @@ export const ICONS_ROUTE = `${PREFIX}.icons`
  * whichever is actually there.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -22,8 +23,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	const page = (route: string, title: string, component: any) =>
 		registerSettingsItem(route, {

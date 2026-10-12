@@ -12,6 +12,12 @@
 import { type CharCounterStorage, FONT_SIZE } from '../index'
 import { limit, useLength } from './length'
 import { wrapRender } from './wrapRender'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { StyleSheet } from 'react-native'
+import * as commonTokens from '@revenge-mod/discord/common/tokens'
 
 const PATH = 'modules/chat_input/native/ChatInput.tsx'
 const GAP = 8
@@ -22,7 +28,7 @@ export const badgeStatus = { hooked: false, moduleId: -1, lastError: '', placed:
 
 function flatten(style: unknown): Record<string, any> {
 	try {
-		return revenge.react.ReactNative.StyleSheet.flatten(style as any) ?? {}
+		return StyleSheet.flatten(style as any) ?? {}
 	} catch {
 		return {}
 	}
@@ -58,8 +64,8 @@ function find(root: any, predicate: (node: any) => boolean, depth = 0): any {
 /** A colour by token name through the theme in use, as hide-servers-drawer's `theme.ts`. */
 function token(name: string, fallback: string): string {
 	try {
-		const tables = (revenge.discord.common as any).tokens?.Tokens
-		const store = (revenge.discord.flux.Stores as any).ThemeStore
+		const tables = (commonTokens as any)?.Tokens
+		const store = (Stores as any).ThemeStore
 		const theme = store?.theme ?? 'darker'
 		const semantic = tables?.SemanticColor?.[name]
 		const entry = semantic?.[theme] ?? semantic?.darker ?? semantic?.dark
@@ -94,8 +100,8 @@ export function fontSizeOf(s: Partial<CharCounterStorage>): number {
 
 /** The square itself, shared with the settings page's preview. */
 export function CounterSquare({ text, colour, fontSize }: { text: string; colour: string; fontSize: number }) {
-	const { View } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { Text } = Design as any
 	return (
 		<View
 			style={{
@@ -130,7 +136,7 @@ function Badge({ settings, typing }: { settings: () => CharCounterStorage; typin
 	if (length <= 0) return null
 	if (s.onlyNearLimit && length < max * 0.9) return null
 
-	const { View } = revenge.react.ReactNative
+	const { View } = ReactNative
 	const over = length > max
 	const near = length >= max * 0.9
 	const side = s.side === 'right' ? { right: 16 } : { left: 16 }
@@ -163,7 +169,6 @@ export function patchBadge(settings: () => CharCounterStorage): () => void {
 				const container = find(tree, isContainer)
 				if (container) {
 					const typing = container.props.children.some((child: any) => isTypingFill(child))
-					const React = revenge.react.React
 					container.props.children = [
 						...container.props.children,
 						React.createElement(Badge, { key: 'char-counter', settings, typing }),

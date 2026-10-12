@@ -9,12 +9,20 @@
  */
 
 import { token } from './theme'
+import { getAssetIdByName } from '@revenge-mod/assets'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 const TAG = '[GhostLogNativeBeta]'
 
 function byPath(path: string): any {
 	try {
-		return (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(path)?.[0]
+		return (finders as any).lookupModuleWithImportedPath(path)?.[0]
 	} catch {
 		return undefined
 	}
@@ -37,14 +45,13 @@ const emptyState = () =>
 let Boundary: any
 function boundary(): any {
 	if (Boundary) return Boundary
-	const React = revenge.react.React
 	Boundary = class extends React.Component<{ name: string; fallback: any; children?: any }, { failed: boolean }> {
 		state = { failed: false }
 		static getDerivedStateFromError() {
 			return { failed: true }
 		}
 		componentDidCatch(error: unknown) {
-			console.error(`${TAG} Discord's ${this.props.name} failed; using the plain version:`, error)
+			reportError(`${TAG} Discord's ${this.props.name} failed; using the plain version:`, error)
 		}
 		render() {
 			return this.state.failed ? this.props.fallback : this.props.children
@@ -65,7 +72,7 @@ export function Native({ name, available, fallback, children }: { name: string; 
 }
 
 function stores(): any {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 function cdnAvatar(userId: string, hash?: string): string {
@@ -89,8 +96,7 @@ const PIXELS: Record<AvatarSize, number> = { XSMALL: 24, SMALL: 32, NORMAL: 40, 
  * it; anyone else is drawn from the avatar hash captured with the message.
  */
 export function UserAvatar({ userId, hash, size = 'NORMAL' }: { userId: string; hash?: string; size?: AvatarSize }) {
-	const React = revenge.react.React
-	const { Image } = revenge.react.ReactNative
+	const { Image } = ReactNative
 	const [failed, setFailed] = React.useState(false)
 	const px = PIXELS[size]
 	const uri = cdnAvatar(userId, failed ? undefined : hash)
@@ -121,7 +127,7 @@ export function UserAvatar({ userId, hash, size = 'NORMAL' }: { userId: string; 
 
 /** A server's icon, or its initials on a plain circle, like the server list draws an iconless one. */
 export function GuildIcon({ id, hash, name, size = 16 }: { id?: string; hash?: string; name: string; size?: number }) {
-	const { Image, View, Text } = revenge.react.ReactNative
+	const { Image, View, Text } = ReactNative
 	if (id && hash) {
 		const uri = `https://cdn.discordapp.com/icons/${id}/${hash}.png?size=64`
 		return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 3 }} />
@@ -160,8 +166,8 @@ export function BotTag() {
 }
 
 export function Empty({ title, body }: { title: string; body: string }) {
-	const { View } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { Text } = Design as any
 	const Component = emptyState()
 	const fallback = (
 		<View style={{ paddingVertical: 48, paddingHorizontal: 32, alignItems: 'center', gap: 8 }}>
@@ -185,10 +191,10 @@ export function Empty({ title, body }: { title: string; body: string }) {
  * tinted with `color`. Nothing at all when neither exists: every use is decoration.
  */
 export function Glyph({ name, color, size = 16 }: { name: string; color: string; size?: number }) {
-	const { Image } = revenge.react.ReactNative
+	const { Image } = ReactNative
 	let Component: any
 	try {
-		Component = revenge.utils.discord.lookupGeneratedIconComponent?.(name)
+		Component = lookupGeneratedIconComponent?.(name)
 	} catch {
 		Component = undefined
 	}
@@ -201,7 +207,7 @@ export function Glyph({ name, color, size = 16 }: { name: string; color: string;
 	}
 	let asset: number | undefined
 	try {
-		const id = revenge.assets.getAssetIdByName(name)
+		const id = getAssetIdByName(name)
 		asset = typeof id === 'number' ? id : undefined
 	} catch {
 		asset = undefined

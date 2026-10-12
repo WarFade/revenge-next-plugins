@@ -8,6 +8,10 @@
 import { type SavedMedia, usePreviewUri } from '../../lib/media'
 import { BotTag, Glyph, GuildIcon, UserAvatar } from '../native'
 import { token } from '../theme'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 export function ago(timestamp: number): string {
 	const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
@@ -32,7 +36,7 @@ export function stamp(timestamp: number): string {
 
 function isBot(userId: string): boolean {
 	try {
-		return !!(revenge.discord.flux.Stores as any).UserStore?.getUser?.(userId)?.bot
+		return !!(Stores as any).UserStore?.getUser?.(userId)?.bot
 	} catch {
 		return false
 	}
@@ -50,8 +54,8 @@ export function ChannelHeader({
 	guildIcon?: string
 	channelName: string
 }) {
-	const { View } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { Text } = Design as any
 	const where = guildId ? guildName ?? 'Server' : 'Direct messages'
 	return (
 		<View
@@ -84,8 +88,8 @@ export function MediaTile({
 	onPress?: () => void
 	onLongPress?: () => void
 }) {
-	const { View, Image, Pressable } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View, Image, Pressable } = ReactNative
+	const { Text } = Design as any
 	const uri = usePreviewUri(item)
 	const surface = token('BACKGROUND_MOD_SUBTLE', '#2e3035')
 	const muted = token('TEXT_MUTED', '#949ba4')
@@ -179,9 +183,9 @@ export function MessageCard({
 	onLongPress?: () => void
 	onPressMedia?: (index: number) => void
 }) {
-	const { React } = revenge.react
-	const { View, Pressable } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { React } = react
+	const { View, Pressable } = ReactNative
+	const { Text } = Design as any
 	const [expanded, setExpanded] = React.useState(false)
 	const [allVersions, setAllVersions] = React.useState(false)
 	const muted = token('TEXT_MUTED', '#949ba4')
@@ -306,8 +310,8 @@ export function FilterBar<T extends string>({
 	filter: T
 	onFilter: (value: T) => void
 }) {
-	const { View } = revenge.react.ReactNative
-	const { TextInput, Button } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { TextInput, Button } = Design as any
 	return (
 		<View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
 			{onQuery ? (

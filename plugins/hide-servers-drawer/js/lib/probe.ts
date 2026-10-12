@@ -21,7 +21,13 @@
  * RN props (overScrollMode etc.) whose values are fixed strings from RN's own source.
  */
 
-const log = (line: string) => console.log(`[HideServersDrawer] ${line}`)
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+
+const DEBUG: boolean = false
+
+const log = (line: string) => { if (DEBUG) console.log(`[HideServersDrawer] ${line}`) }
 
 // ---------------------------------------------------------------------------
 // Session flags
@@ -250,8 +256,8 @@ const ACTION_PROPS = ["selectPrivateChannel", "transitionToGuild", "transitionTo
  * names are code identifiers -- never user data. Capped hard; this runs on the JS thread.
  */
 export function probeDmNavigation(): string {
-	const { lookupModules } = revenge.modules.finders as any
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModules } = finders as any
+	const { withProps } = filters
 
 	let total = 0
 	for (const prop of ACTION_PROPS) {
@@ -293,7 +299,7 @@ export function probeDmNavigation(): string {
 
 /** Method names SortedGuildStore actually exposes, for the same reason as above. */
 export function probeSortedGuildStore(): string {
-	const store = (revenge.discord.flux.Stores as any).SortedGuildStore
+	const store = (Stores as any).SortedGuildStore
 	if (!store) return "SortedGuildStore not found"
 
 	const names = new Set<string>()

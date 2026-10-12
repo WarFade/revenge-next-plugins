@@ -2,6 +2,7 @@ import { setupChangelog } from '../../../shared/changelog'
 import { CHANGELOG } from './changelog'
 import patchCallButtons from './patches/callButtons'
 import Settings from './ui/pages/Settings'
+import { reportError, setReporter } from '../../../shared/report'
 
 /**
  * Also the fallback for every read: `load: true` starts the storage read without awaiting it,
@@ -32,6 +33,10 @@ export default plugin<{ jsonStorage: HideCallButtonsStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -47,7 +52,7 @@ export default plugin<{ jsonStorage: HideCallButtonsStorage }>({
 			try {
 				cleanup(patchCallButtons(jsonStorage))
 			} catch (error) {
-				console.error("[HideCallButtons] failed to apply patches:", error)
+				reportError("[HideCallButtons] failed to apply patches:", error)
 			}
 		}, 0)
 		cleanup(() => clearTimeout(installTimer))

@@ -4,6 +4,10 @@ import { getAi } from '../../lib/state'
 import { FieldRow } from '../fieldGroup'
 import { rowIcon } from '../icon'
 import { EDIT_RULE_ROUTE } from '../routes'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 /**
  * "Describe a rule", written by AI Core (`lib/aiRule.ts`). Rendered only when AI Core is installed:
@@ -11,10 +15,10 @@ import { EDIT_RULE_ROUTE } from '../routes'
  * used) shows the section greyed out with the reason, so it is clear why nothing happens.
  */
 export default function AiDraft({ kind }: { kind: RuleKind }) {
-	const { React } = revenge.react
-	const { View } = revenge.react.ReactNative
-	const { Text, Card, TableRowGroup, TableRow, TextInput } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { React } = react
+	const { View } = ReactNative
+	const { Text, Card, TableRowGroup, TableRow, TextInput } = Design
+	const { useNavigation } = ReactNavigationNative
 	const navigation = useNavigation() as any
 
 	const [description, setDescription] = React.useState('')

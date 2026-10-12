@@ -6,13 +6,20 @@ import { FieldRow } from '../fieldGroup'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { Topic } from '../../types'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../../shared/report'
 
 const ALERT_KEY = 'VeilTopic'
 
 /** The open channel is the one the user will look at next, so it is redrawn with the new rules. */
 function repaintCurrent() {
 	try {
-		const id = (revenge.discord.flux.Stores as any).SelectedChannelStore?.getChannelId?.()
+		const id = (Stores as any).SelectedChannelStore?.getChannelId?.()
 		if (id) repaintChannel(id)
 	} catch {
 		/* the next scroll picks it up */
@@ -33,10 +40,9 @@ function newId(): string {
  * new description.
  */
 function openTopic(topic: Topic, topics: Topic[]) {
-	const { AlertModal, AlertActionButton, Text } = revenge.discord.design.Design as any
-	const { ScrollView, Dimensions } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton, Text } = Design as any
+	const { ScrollView, Dimensions } = ReactNative
+	const alerts = AlertActionCreators
 	const close = () => alerts.dismissAlert(ALERT_KEY)
 	const write = (next: Topic[]) => {
 		patch({ topics: next })
@@ -88,7 +94,7 @@ function openTopic(topic: Topic, topics: Topic[]) {
 			/>,
 		)
 	} catch (error) {
-		console.error(`${TAG} could not open the rule:`, error)
+		reportError(`${TAG} could not open the rule:`, error)
 	}
 }
 
@@ -100,10 +106,9 @@ function openTopic(topic: Topic, topics: Topic[]) {
  */
 export default function Topics() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow, TextInput } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

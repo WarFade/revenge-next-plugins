@@ -1,5 +1,7 @@
 import { getStorage, settings } from '../../lib/state'
 import { rowIcon } from '../icon'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * Sections that fold away. Tapping a section's header hides its rows and leaves only the header,
@@ -17,7 +19,7 @@ export function toggleCollapsed(key: string) {
 	const list = settings().collapsed ?? []
 	// A gentle open/close instead of a jump. Best effort: some builds ignore layout animation.
 	try {
-		const { LayoutAnimation } = revenge.react.ReactNative as any
+		const { LayoutAnimation } = ReactNative as any
 		LayoutAnimation?.configureNext?.(LayoutAnimation.Presets.easeInEaseOut)
 	} catch {
 		/* no animation then */
@@ -43,8 +45,8 @@ export function SectionHeader({
 	onPress: () => void
 	color?: string
 }) {
-	const { Pressable, View } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design
+	const { Pressable, View } = ReactNative
+	const { Text } = Design
 	const style = color ? { color } : undefined
 
 	return (
@@ -87,8 +89,8 @@ export function CollapsibleGroup({
 	count: number
 	children: any
 }) {
-	const { View } = revenge.react.ReactNative
-	const { TableRowGroup } = revenge.discord.design.Design
+	const { View } = ReactNative
+	const { TableRowGroup } = Design
 	const collapsed = isCollapsed(id)
 
 	return (

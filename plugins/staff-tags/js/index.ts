@@ -8,6 +8,7 @@ import { registerPages } from "./ui/routes"
 import type { StaffTagsStorage } from "./types"
 import { CHANGELOG } from "./changelog"
 import { setupChangelog } from "../../../shared/changelog"
+import { reportError, setReporter } from "../../../shared/report"
 
 export { DEFAULTS }
 export type { StaffTagsStorage }
@@ -18,6 +19,10 @@ export default plugin<{ jsonStorage: StaffTagsStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -34,7 +39,7 @@ export default plugin<{ jsonStorage: StaffTagsStorage }>({
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error("[StaffTags] failed to register settings pages:", error)
+			reportError("[StaffTags] failed to register settings pages:", error)
 		}
 
 		// Apply each surface independently -- a single moved Discord module must disable
@@ -43,7 +48,7 @@ export default plugin<{ jsonStorage: StaffTagsStorage }>({
 			try {
 				cleanup(patch())
 			} catch (error) {
-				console.error(`[StaffTags] failed to apply ${name} patch:`, error)
+				reportError(`[StaffTags] failed to apply ${name} patch:`, error)
 			}
 		}
 

@@ -3,6 +3,10 @@ import { BAR_WIDTH, ICON_SIZE } from "../layout"
 import { avatarFallback, barBackground, mentionBadge, selectedFill, unreadDot } from "../theme"
 import MorphIcon from "./MorphIcon"
 import Pill from "./Pill"
+import { getModules } from "@revenge-mod/modules/finders"
+import { withProps } from "@revenge-mod/modules/finders/filters"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // getModules, not lookupModule: confirmed on-device (staff-tags plugin) that a lazily-loaded
 // module can still be unregistered even from inside start() -- this file's top-level code
@@ -10,7 +14,7 @@ import Pill from "./Pill"
 // registry is populated. lookupModule gives up immediately and permanently caches a false
 // "not found"; getModules subscribes and calls back whenever the module actually loads.
 let channelActions: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("selectPrivateChannel"), (mod: any) => {
+getModules(withProps("selectPrivateChannel"), (mod: any) => {
 	channelActions = mod
 })
 
@@ -32,7 +36,7 @@ function acronym(name: string): string {
 
 function MemberAvatar({ member, size, fontSize }: { member: { url?: string; username: string }; size: number; fontSize: number }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { View, Image, Text } = revenge.react.ReactNative
+	const { View, Image, Text } = ReactNative
 
 	if (member.url) {
 		return <Image source={{ uri: member.url }} style={{ width: size, height: size, borderRadius: size / 2 }} />
@@ -55,7 +59,7 @@ function MemberAvatar({ member, size, fontSize }: { member: { url?: string; user
 
 /** Two overlapping avatars: first back/top-left, second front/bottom-right with a ring. */
 function GroupAvatars({ members }: { members: Array<{ id: string; url?: string; username: string }> }) {
-	const { View } = revenge.react.ReactNative
+	const { View } = ReactNative
 
 	const [back, front] = members
 
@@ -88,8 +92,8 @@ function GroupAvatars({ members }: { members: Array<{ id: string; url?: string; 
  * every row's avatar each time flashes the bar.
  */
 function UnreadDmRow({ dm, selected }: { dm: UnreadDm; selected: boolean }) {
-	const { React } = revenge.react
-	const { Pressable, View, Image, Text } = revenge.react.ReactNative
+	const { React } = react
+	const { Pressable, View, Image, Text } = ReactNative
 
 	const navigate = React.useCallback(() => {
 		try {
@@ -178,7 +182,7 @@ const st = {
 let Memoized: any
 
 export default function UnreadDmRowMemo(props: { dm: UnreadDm; selected: boolean }) {
-	const { React } = revenge.react
+	const { React } = react
 	Memoized ??= React.memo(UnreadDmRow)
 	return <Memoized {...props} />
 }

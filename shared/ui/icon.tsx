@@ -1,3 +1,7 @@
+import * as assets from '@revenge-mod/assets'
+import { Design } from '@revenge-mod/discord/design'
+import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
+
 /**
  * A leading icon for a settings row, by icon name. Shared by every plugin's `js/ui/icon.tsx`.
  *
@@ -53,11 +57,11 @@ function findIcon(requested: string[], danger: boolean) {
 	const names = [
 		...new Set(requested.flatMap(name => [name, ...(ALIASES[name] ?? [])])),
 	]
-	const { getAssetIdByName } = revenge.assets
-	const { TableRow, TableRowIcon } = revenge.discord.design.Design as any
+	const { getAssetIdByName } = assets
+	const { TableRow, TableRowIcon } = Design as any
 	const Icon = TableRow?.Icon ?? TableRowIcon
 	const lookupComponent = safe(
-		() => revenge.utils.discord.lookupGeneratedIconComponent,
+		() => lookupGeneratedIconComponent,
 	)
 
 	for (const name of names) {

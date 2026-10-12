@@ -14,11 +14,16 @@ import patchAvatar from './patches/avatar'
 import patchBanner from './patches/banner'
 import patchViewerOptions from './patches/viewerOptions'
 import Settings from './ui/Settings'
+import { reportError, setReporter } from '../../../shared/report'
 
 export default plugin({
 	// Only for the changelog's last-seen version (shared/changelog.tsx).
 	jsonStorage: { load: true, default: {} },
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		cleanup(setupChangelog({ plugin, jsonStorage }, CHANGELOG))
 		if (plugin.startedLate) {
 			plugin.requireReload()
@@ -32,7 +37,7 @@ export default plugin({
 			try {
 				cleanup(install())
 			} catch (error) {
-				console.error(`${TAG} failed to install the ${name}:`, error)
+				reportError(`${TAG} failed to install the ${name}:`, error)
 			}
 		}
 	},

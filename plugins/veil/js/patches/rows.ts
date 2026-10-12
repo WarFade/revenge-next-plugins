@@ -29,6 +29,13 @@
 import { readText } from '../lib/readText'
 import { localReason, stickerReason } from '../lib/rules'
 import { currentUserId, settings, TAG } from '../lib/state'
+import { Stores, onFluxEventDispatched } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { after } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const SPOILER = 'spoiler'
 const SUBTEXT = 'subtext'
@@ -387,8 +394,8 @@ function apply(row: any) {
 }
 
 export default function patchRows(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	const patches: Array<() => void> = []
 	const seen = new WeakSet<any>()
@@ -403,18 +410,18 @@ export default function patchRows(): () => void {
 			seen.add(RowManager)
 
 			patches.push(
-				revenge.patcher.after(RowManager.prototype, 'generate', (row: any) => {
+				after(RowManager.prototype, 'generate', (row: any) => {
 					try {
 						apply(row)
 					} catch (error) {
-						console.error(`${TAG} row blur failed:`, error)
+						reportError(`${TAG} row blur failed:`, error)
 					}
 					// Assigned unconditionally by the patcher, so returned on every path.
 					return row
 				}),
 			)
 			status.installed = true
-			console.log(`${TAG} blurring rows through a RowManager.generate`)
+			if (DEBUG) console.log(`${TAG} blurring rows through a RowManager.generate`)
 		},
 		{ max: 10 },
 	)
@@ -423,18 +430,18 @@ export default function patchRows(): () => void {
 	// Leaving a channel re-covers its stickers and emoji (see leftCount).
 	let openChannel: string | undefined
 	try {
-		openChannel = (revenge.discord.flux.Stores as any).SelectedChannelStore?.getChannelId?.() ?? undefined
+		openChannel = (Stores as any).SelectedChannelStore?.getChannelId?.() ?? undefined
 	} catch {
 		/* read on the first switch instead */
 	}
 	patches.push(
-		revenge.discord.flux.onFluxEventDispatched('CHANNEL_SELECT', (payload: any) => {
+		onFluxEventDispatched('CHANNEL_SELECT', (payload: any) => {
 			try {
 				const next = payload?.channelId ? String(payload.channelId) : undefined
 				if (openChannel && openChannel !== next) leaveChannel(openChannel)
 				openChannel = next
 			} catch (error) {
-				console.error(`${TAG} channel switch failed:`, error)
+				reportError(`${TAG} channel switch failed:`, error)
 			}
 			// A flux patch must hand the payload on (porting rule 2).
 			return payload

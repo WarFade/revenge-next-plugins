@@ -6,6 +6,10 @@ import { FieldRow } from '../fieldGroup'
 import { dangerIcon, rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { SendTweaksStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /**
  * Styles: what Restyle in the swipe-up Preview offers (`lib/styles.ts`), a box to try them without
@@ -13,10 +17,9 @@ import type { SendTweaksStorage } from '../../types'
  */
 export default function Styles() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TextInput } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow, TextInput } = Design
 
 	const storage = getStorage()
 	const s = useSettings()

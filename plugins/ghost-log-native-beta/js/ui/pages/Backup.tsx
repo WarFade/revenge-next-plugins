@@ -12,6 +12,9 @@ import { showToast } from '../../../../../shared/toast'
 import { refreshEdits, useEdits } from '../../lib/edits'
 import { useBottomPadding } from '../safeArea'
 import type { GhostLogSettings } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 const ID = 'bleelblep.ghost-log-native-beta'
 
@@ -27,9 +30,9 @@ const APP_DOCS_PATH = 'documents/GhostLog/deleted-log.backup.json'
 const APP_CACHE_PATH = 'cache/GhostLog/deleted-log.backup.json'
 
 export default function Backup() {
-	const { Page } = revenge.components
-	const { ScrollView, Alert, View } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow, Card, Text } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, Alert, View } = ReactNative
+	const { Stack, TableRowGroup, TableRow, Card, Text } = Design
 
 	const storage = getSettingsStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

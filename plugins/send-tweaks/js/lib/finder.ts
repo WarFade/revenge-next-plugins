@@ -1,3 +1,6 @@
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+
 /**
  * Finds a module by props now or whenever it initializes, and hands it over once.
  *
@@ -12,8 +15,8 @@ export function whenModule(
 	props: string[],
 	onFound: (host: any, id: number) => void,
 ): () => void {
-	const { lookupModules, waitForModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModules, waitForModules } = finders
+	const { withProps } = filters
 	const filter = withProps(props[0], ...props.slice(1))
 
 	let done = false

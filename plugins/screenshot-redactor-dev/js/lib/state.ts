@@ -2,6 +2,7 @@ import { DEFAULTS } from "../defaults"
 import { resetAliases } from "./alias"
 import type { RedactOptions } from "./rowSchema"
 import type { ScreenshotRedactorStorage } from "../types"
+import { Stores } from "@revenge-mod/discord/flux"
 
 let storage: RevengeJsonStorageApi<ScreenshotRedactorStorage> | undefined
 let originalResolutionDepth = 0
@@ -76,7 +77,7 @@ export function currentUserId(): string | undefined {
 	if (cachedSelfId) return cachedSelfId
 
 	try {
-		const { UserStore } = revenge.discord.flux.Stores as any
+		const { UserStore } = Stores as any
 		const id = UserStore?.getCurrentUser?.()?.id
 		if (typeof id === "string" && id) cachedSelfId = id
 	} catch {

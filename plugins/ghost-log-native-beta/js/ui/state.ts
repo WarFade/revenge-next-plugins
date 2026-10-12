@@ -1,6 +1,10 @@
 import { callNativeMethod } from '../lib/native'
 import { loadRichContent, rehydrateEntries } from '../lib/richContent'
 import type { GhostLogSettings } from '../types'
+import * as react from '@revenge-mod/react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const ID = 'bleelblep.ghost-log-native-beta'
 
@@ -85,9 +89,9 @@ export async function refreshLog(): Promise<DeletedMessage[]> {
 			// exposed an intermediate state to the render-restore hook, which memoized MessageRecords
 			// with empty attachments/embeds and never rebuilt them once the rich content landed.
 			cache = entries.map(entry => ({ ...entry, ...(rich.get(entry.id) ?? {}) }))
-			console.log(`[GhostLogNativeBeta] cache loaded ${cache.length} entries`)
+			if (DEBUG) console.log(`[GhostLogNativeBeta] cache loaded ${cache.length} entries`)
 		} catch (error) {
-		console.error('[GhostLogNativeBeta] getLog failed:', error)
+		reportError('[GhostLogNativeBeta] getLog failed:', error)
 		cache = []
 	} finally {
 		loading = false
@@ -128,7 +132,7 @@ export function rehydrateChannel(channelId: string): void {
 		})
 		.catch(error => {
 			if (attempt < REHYDRATE_MAX_ATTEMPTS) rehydratedChannels.delete(channelId)
-			console.error('[GhostLogNativeBeta] media rehydrate failed:', error)
+			reportError('[GhostLogNativeBeta] media rehydrate failed:', error)
 		})
 }
 
@@ -152,12 +156,10 @@ export async function refreshStorageStatus(): Promise<StorageStatus | undefined>
 		const raw = await callNativeMethod(`${ID}.getStorageStatus`, [])
 		storageStatus = raw ? (JSON.parse(raw) as StorageStatus) : undefined
 		if (storageStatus?.usingFallback) {
-			console.error(
-				`[GhostLogNativeBeta] storage fallback: ${storageStatus.requestedDir} is unusable (${storageStatus.error}); writing to ${storageStatus.baseDir}`,
-			)
+			reportError(`[GhostLogNativeBeta] storage fallback: ${storageStatus.requestedDir} is unusable (${storageStatus.error}); writing to ${storageStatus.baseDir}`)
 		}
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] getStorageStatus failed:', error)
+		reportError('[GhostLogNativeBeta] getStorageStatus failed:', error)
 	}
 	notify()
 	return storageStatus
@@ -165,7 +167,7 @@ export async function refreshStorageStatus(): Promise<StorageStatus | undefined>
 
 /** React hook: the current native storage health, refreshed on mount. */
 export function useStorageStatus(): StorageStatus | undefined {
-	const { React } = revenge.react
+	const { React } = react
 	const [status, setStatus] = React.useState<StorageStatus | undefined>(getStorageStatus())
 
 	React.useEffect(() => {
@@ -181,7 +183,7 @@ export async function clearNativeLog(): Promise<void> {
 	try {
 		await callNativeMethod(`${ID}.clearLog`, [])
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] clearLog failed:', error)
+		reportError('[GhostLogNativeBeta] clearLog failed:', error)
 	}
 	cache = []
 	pendingAdds.length = 0
@@ -244,7 +246,7 @@ export async function removeFromLog(messageId: string): Promise<void> {
 	try {
 		await callNativeMethod(`${ID}.removeEntry`, [messageId])
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] removeEntry failed:', error)
+		reportError('[GhostLogNativeBeta] removeEntry failed:', error)
 	}
 	const staged = pendingAdds.findIndex(entry => entry.id === messageId)
 	if (staged >= 0) pendingAdds.splice(staged, 1)
@@ -285,7 +287,7 @@ export function isLoggedId(messageId: string): boolean {
 
 /** React hook: subscribe to native log updates and trigger a load on first mount. */
 export function useLog(): DeletedMessage[] {
-	const { React } = revenge.react
+	const { React } = react
 	const [entries, setEntries] = React.useState<DeletedMessage[]>(getCachedLog())
 
 	React.useEffect(() => {

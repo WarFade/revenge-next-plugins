@@ -3,8 +3,10 @@
  * https://git.gay/kmmiio99o/revenge-next-plugins/src/branch/main/docs/api.md
  *
  * Soft dependency: uses kmio's ToastsAPI if available, otherwise falls back to
- * Discord's native ToastActionCreators.open.
+ * shared/toast.ts, which picks the right ToastActionCreators signature for the Discord build.
  */
+
+import { showToast as sharedToast } from '../../../../shared/toast'
 
 let scopedToasts: any
 
@@ -16,13 +18,7 @@ function getToasts(): any {
 	if (scopedToasts && typeof scopedToasts.show === 'function') {
 		return scopedToasts
 	}
-	try {
-		const rev = (globalThis as any).revenge
-		if (typeof rev?.toasts?.show === 'function') return rev.toasts
-		if (typeof (globalThis as any).toasts?.show === 'function') return (globalThis as any).toasts
-		const plugToasts = rev?.plugins?.plugins?.['dev.kmmiio99o.toasts']?.api?.toasts
-		if (typeof plugToasts?.show === 'function') return plugToasts
-	} catch {}
+	// Only the API handed to start() (setToastApi): plugins must not read the global `revenge`.
 	return undefined
 }
 
@@ -44,15 +40,5 @@ export function showToast(content: string, options?: ToastOptions) {
 		return
 	}
 
-	try {
-		const openToast = revenge.discord?.actions?.ToastActionCreators?.open
-		if (typeof openToast === 'function') {
-			openToast({
-				key: options?.key ?? 'SendTweaksToast',
-				content,
-			})
-		}
-	} catch {
-		/* a toast is not worth a crash */
-	}
+	sharedToast(content, options?.key ?? 'SendTweaksToast')
 }

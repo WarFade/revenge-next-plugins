@@ -1,8 +1,12 @@
+import { FieldRow } from '../fieldGroup'
 import { DEFAULTS } from '../../defaults'
 import { aiStatus, getStorage } from '../../lib/state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { SecondThoughtsStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * Every toggle, on one route so the root page stays an index.
@@ -13,10 +17,9 @@ import type { SecondThoughtsStorage } from '../../types'
  */
 export default function Checks() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableSwitchRow, Slider } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableSwitchRow, Slider } = Design
 
 	// A plain navigator route, so there is no plugin `api` prop here.
 	const storage = getStorage()
@@ -109,8 +112,8 @@ export default function Checks() {
 						{judgementNote}
 					</Text>
 
-					<TableRowGroup title={`Sensitivity — ${s.sensitivity}`}>
-						<View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+					<TableRowGroup>
+						<FieldRow label={`Sensitivity — ${s.sensitivity}`}>
 							<Text color="text-muted" variant="text-sm/normal">
 								How suspicious a draft has to look to this device before it is
 								worth asking the AI about. Lower catches more and costs more.
@@ -123,7 +126,7 @@ export default function Checks() {
 								maximumValue={8}
 								onValueChange={value => set({ sensitivity: Math.round(value) })}
 							/>
-						</View>
+						</FieldRow>
 					</TableRowGroup>
 				</Stack>
 			</ScrollView>

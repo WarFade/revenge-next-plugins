@@ -7,7 +7,25 @@ confirmed against [PalmDevs](https://github.com/PalmDevs)' working plugins.
 
 Read this before touching a plugin.
 
-## 1. Never touch `revenge.*` at module scope
+## 1. Import from `@revenge-mod/*`, and never *use* those imports at module scope
+
+**Write imports, not the `revenge` global** (community repo rule, 2026-10-13):
+
+```ts
+import { after } from '@revenge-mod/patcher'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
+```
+
+The plugin CLI (`inlineImportsPlugin` in `@revenge-mod/plugin-cli/src/build.ts`) rewrites every use of an
+imported name back into the global path at the place it is used, e.g. `after(...)` → `revenge.patcher.after(...)`.
+It also follows top-level `const { X } = Design` aliases. So an import costs nothing at preInit, but a *use*
+at module scope (calling it, or reading a property from it into a value) still runs at preInit, and
+everything below still applies. Module ids and the globals they map to: `@revenge-mod/types/modules.importmap.json`
+(and `modules.hidden.importmap.json`; files using `@revenge-mod/plugins/_` need
+`/// <reference types="@revenge-mod/types/hidden" />`). The examples below show the global path, which is what
+the bundle contains after inlining.
+
 
 The single most important rule here. It was the real cause of the "settings pages crash the
 whole Settings screen" bug that this repo spent a long time misdiagnosing.
@@ -505,3 +523,18 @@ back into the outgoing array, so an incomplete order can never reach the wire ev
 future build reroutes a persist caller through a filtered getter. Bail out (return the
 original args) whenever anything *non-hidden* is missing from the payload — a deliberately
 partial caller is not yours to repair.
+
+## 9. Errors go to `plugin.reportError`; debug code sits behind `DEBUG`
+
+Community repo rules (adopted 2026-10-13 across every active plugin):
+
+- **Errors:** `reportError(context, error)` from `shared/report.ts`, never `console.error`. Each plugin's
+  `start()` calls `setReporter(plugin)` (and clears it on cleanup). The helper reports each distinct error
+  once per session, because Revenge's `plugin.errors` list is never trimmed and a hot-path failure would
+  grow it forever. Errors raised before `start()` are queued and reported when it runs. Users see these in
+  the plugin's options sheet and under the "has errors" filter, so report real failures, not chatter.
+- **Debug code:** `const DEBUG: boolean = false` after the imports of each file that has any, and
+  `if (DEBUG) …` / `{DEBUG && …}` around it: `console.log/info/debug`, `console.warn` without an error,
+  Debug pages (`...(DEBUG ? [page(DEBUG_ROUTE, …)] : [])` in `ui/routes.tsx`, and the row that opens them),
+  start-up probes. The CLI minifies with dead-code removal, so none of it reaches the zip. Flip the file's
+  `DEBUG` to `true` locally to get a Debug page back; never commit it as `true`.

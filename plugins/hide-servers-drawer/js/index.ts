@@ -9,6 +9,9 @@ import { registerPages } from "./ui/routes"
 import Settings from "./ui/pages/Settings"
 import { CHANGELOG } from "./changelog"
 import { setupChangelog } from "../../../shared/changelog"
+import { reportError, setReporter } from "../../../shared/report"
+
+const DEBUG: boolean = false
 
 export interface HideServersDrawerStorage {
 	/**
@@ -43,6 +46,10 @@ export default plugin<{ jsonStorage: HideServersDrawerStorage }>({
 		default: {},
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -61,7 +68,7 @@ export default plugin<{ jsonStorage: HideServersDrawerStorage }>({
 			try {
 				cleanup(patch())
 			} catch (error) {
-				console.error(`[HideServersDrawer] failed to apply ${name}:`, error)
+				reportError(`[HideServersDrawer] failed to apply ${name}:`, error)
 			}
 		}
 
@@ -73,7 +80,7 @@ export default plugin<{ jsonStorage: HideServersDrawerStorage }>({
 			patchCreateElement(patches)
 			patches.forEach(unpatch => cleanup(unpatch))
 		} catch (error) {
-			console.error("[HideServersDrawer] failed to apply createElement intercept:", error)
+			reportError("[HideServersDrawer] failed to apply createElement intercept:", error)
 		}
 
 		// The Servers/Legacy/Debug settings sub-screens are their own navigator routes,
@@ -81,7 +88,7 @@ export default plugin<{ jsonStorage: HideServersDrawerStorage }>({
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error("[HideServersDrawer] failed to register settings pages:", error)
+			reportError("[HideServersDrawer] failed to register settings pages:", error)
 		}
 
 		// Two layers: the store filter keeps derived data consistent (and is what hides
@@ -99,45 +106,47 @@ export default plugin<{ jsonStorage: HideServersDrawerStorage }>({
 		}, 0)
 		cleanup(() => clearTimeout(installTimer))
 
-		// Dev auto-probe: a few seconds after start, dump the navigation actions and the
-		// store's method list, then arm a one-shot stock-bar render + tree dump -- so a
-		// device round needs no settings navigation at all. Crash-guard: `probeArmed` is
-		// persisted before arming and cleared by onDumpDone when the dump fires; a launch
-		// that finds it set means the armed stock render never completed (it took the app
-		// down), so the probe skips itself instead of bootlooping.
-		onDumpDone(() => {
-			try {
-				jsonStorage.set?.({ probeArmed: false })
-			} catch {
-				/* ignore */
-			}
-		})
-
-		const autoProbe = setTimeout(() => {
-			;(async () => {
+		if (DEBUG) {
+			// Dev auto-probe: a few seconds after start, dump the navigation actions and the
+			// store's method list, then arm a one-shot stock-bar render + tree dump -- so a
+			// device round needs no settings navigation at all. Crash-guard: `probeArmed` is
+			// persisted before arming and cleared by onDumpDone when the dump fires; a launch
+			// that finds it set means the armed stock render never completed (it took the app
+			// down), so the probe skips itself instead of bootlooping.
+			onDumpDone(() => {
 				try {
-					const state = (await jsonStorage.get?.()) as HideServersDrawerStorage | undefined
-					if (state?.probeArmed) {
-						console.log(
-							"[HideServersDrawer] auto-probe SKIPPED: crash-guard tripped -- the armed stock render never finished, so the stock bar likely crashed. Clearing the guard; unhide everything before probing again.",
-						)
-						await jsonStorage.set?.({ probeArmed: false })
-						return
-					}
-
-					console.log("[HideServersDrawer] auto-probe begin")
-					probeDmNavigation()
-					probeSortedGuildStore()
-					await jsonStorage.set?.({ probeArmed: true })
-					armDump()
-					refresh()
-					console.log("[HideServersDrawer] auto-probe armed -- stock bar dumps on next render")
-				} catch (error) {
-					console.error("[HideServersDrawer] auto-probe failed:", error)
+					jsonStorage.set?.({ probeArmed: false })
+				} catch {
+					/* ignore */
 				}
-			})()
-		}, 6000)
-		cleanup(() => clearTimeout(autoProbe))
+			})
+
+			const autoProbe = setTimeout(() => {
+				;(async () => {
+					try {
+						const state = (await jsonStorage.get?.()) as HideServersDrawerStorage | undefined
+						if (state?.probeArmed) {
+							if (DEBUG) console.log(
+								"[HideServersDrawer] auto-probe SKIPPED: crash-guard tripped -- the armed stock render never finished, so the stock bar likely crashed. Clearing the guard; unhide everything before probing again.",
+							)
+							await jsonStorage.set?.({ probeArmed: false })
+							return
+						}
+
+						if (DEBUG) console.log("[HideServersDrawer] auto-probe begin")
+						probeDmNavigation()
+						probeSortedGuildStore()
+						await jsonStorage.set?.({ probeArmed: true })
+						armDump()
+						refresh()
+						if (DEBUG) console.log("[HideServersDrawer] auto-probe armed -- stock bar dumps on next render")
+					} catch (error) {
+						reportError("[HideServersDrawer] auto-probe failed:", error)
+					}
+				})()
+			}, 6000)
+			cleanup(() => clearTimeout(autoProbe))
+		}
 
 		cleanup(() => refresh())
 	},

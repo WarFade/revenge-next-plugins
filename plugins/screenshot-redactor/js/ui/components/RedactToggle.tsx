@@ -2,6 +2,10 @@ import { DEFAULTS } from "../../defaults"
 import { refreshChat } from "../../lib/chatRows"
 import { getStorage, onEnabledChanged } from "../../lib/state"
 import { toggleBackground, toggleBorder, toggleIcon } from "../theme"
+import * as assets from "@revenge-mod/assets"
+import * as React from "react"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../../shared/report"
 
 /** How long the button stays out of sight after arming, so it isn't in the screenshot. */
 const HIDE_MS = 8000
@@ -18,9 +22,8 @@ const HIDE_MS = 8000
  */
 export default function RedactToggle() {
 	// Every `revenge.*` read happens here, at render, never at module scope. See rule 1.
-	const React = revenge.react.React
-	const { Pressable, Animated, Image } = revenge.react.ReactNative as any
-	const { getAssetIdByName } = revenge.assets
+	const { Pressable, Animated, Image } = ReactNative as any
+	const { getAssetIdByName } = assets
 
 	const storage = getStorage()
 
@@ -56,7 +59,7 @@ export default function RedactToggle() {
 			onEnabledChanged(next)
 			refreshChat()
 		} catch (error) {
-			console.error("[ScreenshotRedactor] toggle failed:", error)
+			reportError("[ScreenshotRedactor] toggle failed:", error)
 		}
 
 		setEnabled(next)

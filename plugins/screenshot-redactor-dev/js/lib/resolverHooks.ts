@@ -1,3 +1,6 @@
+import * as patcher from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
 /** Patch every callable slot, including a module's separate default helper object. */
 export function resolverHosts(mod: any, key: string): any[] {
 	return [...new Set([mod, mod?.default])].filter(host => typeof host?.[key] === "function")
@@ -29,7 +32,7 @@ export function patchResolver<T>(
 	transform: (result: any, subject: T | undefined) => any,
 ): () => void {
 	const stack: Array<T | undefined> = []
-	const before = revenge.patcher.before(host, key, (args: any[]) => {
+	const before = patcher.before(host, key, (args: any[]) => {
 		if (stack.length >= 32) stack.length = 0
 		try {
 			stack.push(subject(args))
@@ -40,12 +43,12 @@ export function patchResolver<T>(
 	})
 	let after: () => void
 	try {
-		after = revenge.patcher.after(host, key, (result: any) => {
+		after = patcher.after(host, key, (result: any) => {
 			const call = stack.pop()
 			try {
 				return transform(result, call)
 			} catch (error) {
-				console.error(`[ScreenshotRedactor] ${key} failed:`, error)
+				reportError(`[ScreenshotRedactor] ${key} failed:`, error)
 				return result
 			}
 		})

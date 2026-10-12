@@ -1,3 +1,15 @@
+import { showToast } from '../../../../shared/toast'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as modulesFinders from '@revenge-mod/discord/utils/modules/finders'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
+import { Linking } from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 /**
  * Discord pieces this plugin needs, looked up when first used (never at module scope, porting
  * rule 1). Each getter returns undefined instead of throwing, so a renamed module costs one
@@ -8,8 +20,8 @@ export const TAG = '[ReviewDB]'
 
 function byProps(...props: string[]): any {
 	try {
-		const { lookupModule } = revenge.modules.finders
-		const { withProps } = revenge.modules.finders.filters
+		const { lookupModule } = finders
+		const { withProps } = filters
 		return lookupModule<any>((withProps as any)(...props))?.[0]
 	} catch {
 		return undefined
@@ -18,7 +30,7 @@ function byProps(...props: string[]): any {
 
 function byPath(path: string): any {
 	try {
-		return (revenge.discord.utils.modules.finders as any).lookupModuleWithImportedPath(path)?.[0]
+		return (modulesFinders as any).lookupModuleWithImportedPath(path)?.[0]
 	} catch {
 		return undefined
 	}
@@ -26,9 +38,9 @@ function byPath(path: string): any {
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({ key: `ReviewDB-${Date.now()}`, content })
+		showToast(content, `ReviewDB-${Date.now()}`)
 	} catch {
-		console.log(`${TAG} ${content}`)
+		if (DEBUG) console.log(`${TAG} ${content}`)
 	}
 }
 
@@ -46,8 +58,8 @@ export function OAuth2AuthorizeModal(): any {
 		oauthModal = mod?.default ?? mod
 		if (typeof oauthModal !== 'function') {
 			try {
-				const { lookupModule } = revenge.modules.finders
-				const { withName } = revenge.modules.finders.filters
+				const { lookupModule } = finders
+				const { withName } = filters
 				oauthModal = lookupModule<any>(withName('OAuth2AuthorizeModal'))?.[0]
 			} catch {
 				oauthModal = undefined
@@ -69,7 +81,7 @@ export function openUserProfile(userId: string) {
 			return true
 		}
 	} catch (error) {
-		console.error(`${TAG} could not open profile:`, error)
+		reportError(`${TAG} could not open profile:`, error)
 	}
 	return false
 }
@@ -94,15 +106,15 @@ export function defaultAvatar(userId: string): string {
 
 export function openURL(url: string) {
 	try {
-		revenge.react.ReactNative.Linking.openURL(url)
+		Linking.openURL(url)
 	} catch (error) {
-		console.error(`${TAG} could not open ${url}:`, error)
+		reportError(`${TAG} could not open ${url}:`, error)
 	}
 }
 
 export function isDiscordBlocked(userId: string): boolean {
 	try {
-		return !!(revenge.discord.flux.Stores as any).RelationshipStore?.isBlocked?.(userId)
+		return !!(Stores as any).RelationshipStore?.isBlocked?.(userId)
 	} catch {
 		return false
 	}
@@ -111,7 +123,7 @@ export function isDiscordBlocked(userId: string): boolean {
 /** Discord's generated icon component by name, or undefined. */
 export function icon(name: string): any {
 	try {
-		return revenge.utils.discord.lookupGeneratedIconComponent(name)
+		return lookupGeneratedIconComponent(name)
 	} catch {
 		return undefined
 	}
@@ -129,8 +141,8 @@ export function confirm(options: {
 	onConfirm(): void
 	onCancel?(): void
 }) {
-	const { AlertModal, AlertActionButton } = revenge.discord.design.Design as any
-	const Alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton } = Design as any
+	const Alerts = AlertActionCreators
 	const key = `ReviewDB-confirm-${Date.now()}`
 	Alerts.openAlert(
 		key,

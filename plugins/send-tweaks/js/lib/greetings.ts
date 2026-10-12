@@ -15,6 +15,8 @@
 import { getStorage, settings, TAG } from './state'
 import { discordTimestamp, formatLocal, scopeMatches, type RuleScope } from './templateSyntax'
 import { customValue, isCustomPlaceholder, usesWagon, wagonOffIn } from './wagon'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
 
 /** SHA-256 of the unlock phrase, after `normalize`. */
 const UNLOCK_HASH = 'bcbfa284fdf9f1f16c505b7b04c319a3545fba81af5824d2f8a79c2e89945779'
@@ -161,7 +163,7 @@ export function expandPlaceholders(replacement: string): string {
 					value = context?.sample && key !== 'greeting' ? context.sample[key] ?? '' : (key === 'name' && !target() ? '' : resolve(key, now))
 				}
 			} catch (error) {
-				console.error(`${TAG} placeholder {${key}} failed:`, error)
+				reportError(`${TAG} placeholder {${key}} failed:`, error)
 			}
 			if (!value) value = fallback ?? (key === 'name' ? 'there' : '')
 			cache.set(cacheKey, value.replace(/\$/g, '$$$$'))
@@ -171,7 +173,7 @@ export function expandPlaceholders(replacement: string): string {
 }
 
 function stores(): any {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 function channelId(): string | undefined {

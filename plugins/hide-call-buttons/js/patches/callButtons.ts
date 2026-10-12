@@ -1,6 +1,11 @@
 import { after } from '@revenge-mod/patcher'
 import { DEFAULTS } from '../index'
 import type { HideCallButtonsStorage } from '../index'
+import { getModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /**
  * Hides the call and camera controls this plugin knows about.
@@ -36,7 +41,7 @@ function isElement(node: any): boolean {
 }
 
 const rebuild = (element: any, props: any): any =>
-	(revenge as any).react.React.cloneElement(element, props)
+	(React as any).cloneElement(element, props)
 
 /** Address in a tree: each step indexes `props.children`, except `-1` = the single non-array child. */
 function getAtPath(root: any, path: number[]): any {
@@ -203,7 +208,7 @@ export default function patchCallButtons(
 	/** `after` on the render React calls, reached by the module's Discord source path. */
 	const hook = (path: string, label: string, apply: Apply) => {
 		patches.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(
+			getModuleWithImportedPath(
 				path,
 				(ns: any) => {
 					const target = ns?.default
@@ -213,9 +218,11 @@ export default function patchCallButtons(
 						typeof target.type === 'function'
 					const owner = memo ? target : ns
 					const key = memo ? 'type' : 'default'
-					if (typeof owner?.[key] !== 'function')
-						return console.warn(`[HideCallButtons] ${label}: nothing to patch`)
-					console.log(`[HideCallButtons] ${label}: patched`)
+					if (typeof owner?.[key] !== 'function') {
+						if (DEBUG) console.warn(`[HideCallButtons] ${label}: nothing to patch`)
+						return
+					}
+					if (DEBUG) console.log(`[HideCallButtons] ${label}: patched`)
 					let logged = false
 					patches.push(
 						after(owner, key, (ret: any) => {
@@ -223,13 +230,13 @@ export default function patchCallButtons(
 								const out = apply(ret)
 								if (!logged) {
 									logged = true
-									console.log(
+									if (DEBUG) console.log(
 										`[HideCallButtons] ${label}: ${out === ret ? 'unchanged' : 'changed'}`,
 									)
 								}
 								return out
 							} catch (error) {
-								console.error(`[HideCallButtons] ${label}:`, error)
+								reportError(`[HideCallButtons] ${label}:`, error)
 								return ret
 							}
 						}),

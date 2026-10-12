@@ -1,3 +1,5 @@
+import { Stores } from '@revenge-mod/discord/flux'
+
 /**
  * Keeping Discord's markup out of the translator, and readable after it.
  *
@@ -23,7 +25,7 @@ const SPOILER_MARK = '▮▮▮'
 
 function userName(id: string): string {
 	try {
-		const user = (revenge.discord.flux.Stores as any)?.UserStore?.getUser?.(id)
+		const user = (Stores as any)?.UserStore?.getUser?.(id)
 		return user?.globalName || user?.global_name || user?.username || 'user'
 	} catch {
 		return 'user'
@@ -32,7 +34,7 @@ function userName(id: string): string {
 
 function channelName(id: string): string {
 	try {
-		return (revenge.discord.flux.Stores as any)?.ChannelStore?.getChannel?.(id)?.name || 'channel'
+		return (Stores as any)?.ChannelStore?.getChannel?.(id)?.name || 'channel'
 	} catch {
 		return 'channel'
 	}

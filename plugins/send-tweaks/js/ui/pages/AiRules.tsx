@@ -1,6 +1,10 @@
 import type { RuleKind } from '../../lib/ruleStore'
 import AiDraft from '../components/AiDraft'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 /**
  * Send Tweaks' AI screen: writing a link rule or a text rule from a description, in one place.
@@ -11,10 +15,10 @@ import { useBottomPadding } from '../safeArea'
  */
 export default function AiRules() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRadioGroup, TableRadioRow } = revenge.discord.design.Design
+	const { React } = react
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRadioGroup, TableRadioRow } = Design
 
 	const [kind, setKind] = React.useState<RuleKind>('links')
 

@@ -7,6 +7,11 @@
  */
 
 import { FULL_SIZE, fullSize, MEDIA_PATH, TAG } from '../lib/media'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { before } from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const AVATAR_SOURCE = 'user_profile_avatar'
 
@@ -17,10 +22,10 @@ export default function patchViewerOptions(): () => void {
 	const apply = (mod: any) => {
 		try {
 			if (typeof mod?.openMediaModal !== 'function') {
-				console.error(`${TAG} openMediaModal not found on ${MEDIA_PATH}`)
+				reportError(`${TAG} openMediaModal not found on ${MEDIA_PATH}`)
 				return
 			}
-			unpatch = revenge.patcher.before(mod, 'openMediaModal', (args: any[]) => {
+			unpatch = before(mod, 'openMediaModal', (args: any[]) => {
 				try {
 					const options = args?.[0]
 					if (options?.analyticsSource === AVATAR_SOURCE) {
@@ -41,20 +46,20 @@ export default function patchViewerOptions(): () => void {
 						)
 					}
 				} catch (error) {
-					console.error(`${TAG} viewer options failed:`, error)
+					reportError(`${TAG} viewer options failed:`, error)
 				}
 				return args
 			})
-			console.log(`${TAG} hooked openMediaModal`)
+			if (DEBUG) console.log(`${TAG} hooked openMediaModal`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook openMediaModal:`, error)
+			reportError(`${TAG} failed to hook openMediaModal:`, error)
 		}
 	}
 
 	try {
-		unsubscribe = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(MEDIA_PATH, apply)
+		unsubscribe = (finders as any).getModuleWithImportedPath(MEDIA_PATH, apply)
 	} catch (error) {
-		console.error(`${TAG} openMediaModal lookup failed:`, error)
+		reportError(`${TAG} openMediaModal lookup failed:`, error)
 	}
 
 	return () => {

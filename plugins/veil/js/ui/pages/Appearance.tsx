@@ -2,13 +2,16 @@ import { DEFAULTS } from '../../defaults'
 import { getStorage, patch } from '../../lib/state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** What a blurred message looks like, and what is left alone. */
 export default function Appearance() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableSwitchRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

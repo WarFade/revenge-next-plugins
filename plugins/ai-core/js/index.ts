@@ -39,6 +39,9 @@ import { registerPages } from './ui/routes'
 import type { AiApi, AiBudget, AiCoreStorage, AiRequest } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
+
+const DEBUG: boolean = false
 
 export { DEFAULTS }
 export type { AiApi, AiBudget, AiCoreStorage, AiRequest }
@@ -66,7 +69,7 @@ async function migrateLegacyKey(jsonStorage: RevengeJsonStorageApi<AiCoreStorage
 	const stored = { ...DEFAULTS, ...((await jsonStorage.get()) ?? {}) }
 	const status = await refreshStatus()
 	if (!status.native) {
-		console.error(`${TAG} native half not running; AI Core cannot call out`)
+		reportError(`${TAG} native half not running; AI Core cannot call out`)
 		return
 	}
 	if (!status.migrated) {
@@ -75,7 +78,7 @@ async function migrateLegacyKey(jsonStorage: RevengeJsonStorageApi<AiCoreStorage
 	}
 	if (stored.apiKey) {
 		await jsonStorage.set({ apiKey: '' })
-		console.log(`${TAG} old plain-text key removed from storage`)
+		if (DEBUG) console.log(`${TAG} old plain-text key removed from storage`)
 	}
 }
 
@@ -110,6 +113,10 @@ export default plugin<{ jsonStorage: AiCoreStorage }>({
 	},
 
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -124,13 +131,13 @@ export default plugin<{ jsonStorage: AiCoreStorage }>({
 		setStorage(jsonStorage)
 
 		migrateLegacyKey(jsonStorage).catch(error => {
-			console.error(`${TAG} key migration failed:`, error)
+			reportError(`${TAG} key migration failed:`, error)
 		})
 
 		try {
 			cleanup(registerPages())
 		} catch (error) {
-			console.error('[AiCore] failed to register settings pages:', error)
+			reportError('[AiCore] failed to register settings pages:', error)
 		}
 
 		// Presence marker for plugins that only need to know AI Core is running, not use it --

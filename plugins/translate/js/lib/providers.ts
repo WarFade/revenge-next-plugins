@@ -1,3 +1,5 @@
+import { reportError } from '../../../../shared/report'
+
 /**
  * Four translation services, one interface, and a chain that routes around whichever is having
  * a bad day.
@@ -386,7 +388,7 @@ export async function translateWithChain(
 				return { result, attempts }
 			}
 		} catch (error) {
-			console.error(`[Translate] ${provider.id} threw:`, error)
+			reportError(`[Translate] ${provider.id} threw:`, error)
 		}
 
 		attempts.push({ id: provider.id, outcome: 'failed' })

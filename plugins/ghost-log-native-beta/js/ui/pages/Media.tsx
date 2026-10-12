@@ -4,6 +4,10 @@ import { Empty } from '../native'
 import { useBottomPadding } from '../safeArea'
 import { openMediaSheet, pressMedia } from '../sheets'
 import { useLog } from '../state'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 type Filter = 'all' | MediaKind
 
@@ -24,10 +28,10 @@ const SIDE = 16
  * message.
  */
 export default function Media() {
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { FlatList, View, useWindowDimensions } = revenge.react.ReactNative as any
-	const { Text } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { React } = react
+	const { FlatList, View, useWindowDimensions } = ReactNative as any
+	const { Text } = Design as any
 
 	const entries = useLog()
 	const bottomPadding = useBottomPadding()

@@ -1,4 +1,10 @@
-const log = (...m: any[]) => console.log('[GhostLogNativeBeta]', ...m)
+import { getModules } from '@revenge-mod/modules/finders'
+import { withProps } from '@revenge-mod/modules/finders/filters'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
+
+const log = (...m: any[]) => { if (DEBUG) console.log('[GhostLogNativeBeta]', ...m) }
 
 /**
  * `getModules(withProps(prop), cb)`, not `lookupModule`: confirmed pattern from
@@ -8,17 +14,17 @@ const log = (...m: any[]) => console.log('[GhostLogNativeBeta]', ...m)
  * Safe at module scope for `withProps`-based filters -- see porting-rules.md rule 1's exception.
  */
 let routing: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps('transitionToGuild'), (mod: any) => {
+getModules(withProps('transitionToGuild'), (mod: any) => {
 	routing = mod
 })
 
 let channelActions: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps('selectPrivateChannel'), (mod: any) => {
+getModules(withProps('selectPrivateChannel'), (mod: any) => {
 	channelActions = mod
 })
 
 let messageActions: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps('jumpToMessage'), (mod: any) => {
+getModules(withProps('jumpToMessage'), (mod: any) => {
 	messageActions = mod
 })
 
@@ -43,7 +49,7 @@ export function jumpToDeletedMessage(entry: { guildId?: string; channelId: strin
 			log(`jumpToDeletedMessage: transitionTo(${path})`)
 			return
 		} catch (error) {
-			console.error(`[GhostLogNativeBeta] transitionTo(${path}) failed:`, error)
+			reportError(`[GhostLogNativeBeta] transitionTo(${path}) failed:`, error)
 		}
 	}
 
@@ -51,13 +57,13 @@ export function jumpToDeletedMessage(entry: { guildId?: string; channelId: strin
 		if (entry.guildId) routing?.transitionToGuild?.(entry.guildId)
 		else channelActions?.selectPrivateChannel?.(entry.channelId)
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] guild/channel select failed:', error)
+		reportError('[GhostLogNativeBeta] guild/channel select failed:', error)
 	}
 
 	try {
 		messageActions?.jumpToMessage?.({ channelId: entry.channelId, messageId: entry.id, flash: true, jumpType: 'ANIMATED' })
 		log(`jumpToDeletedMessage: fallback transitionToGuild/selectPrivateChannel + jumpToMessage for ${path}`)
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] jumpToMessage failed:', error)
+		reportError('[GhostLogNativeBeta] jumpToMessage failed:', error)
 	}
 }

@@ -1,7 +1,17 @@
+import * as flux from '@revenge-mod/discord/flux'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as finders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as metro from '@revenge-mod/modules/metro'
+import * as patcher from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
+
 const TAG = '[GhostLogNativeBeta]'
 
 function stores() {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 /**
@@ -26,7 +36,7 @@ export function setProbeRunning(key: ProbeKey, on: boolean): boolean {
 		try {
 			activeProbes.set(key, key === 'messageLoad' ? startMessageLoadProbe() : watchGetMessages())
 		} catch (error) {
-			console.error(`${TAG} failed to start probe ${key}:`, error)
+			reportError(`${TAG} failed to start probe ${key}:`, error)
 		}
 	} else if (!on && existing) {
 		try { existing() } catch (e) { /* ignore */ }
@@ -63,7 +73,7 @@ export function inspectCurrentChannel(): string {
 	const s = stores()
 	const channelId = s.SelectedChannelStore?.getChannelId?.()
 	const info = describeChannelMessages(channelId)
-	console.log(`${TAG} inspect`, JSON.stringify(info))
+	if (DEBUG) console.log(`${TAG} inspect`, JSON.stringify(info))
 	return info.cmPresent ? `channel ${channelId}: ${info.arrayLen} cached msgs` : `no channel messages cached for ${channelId ?? 'none'}`
 }
 
@@ -78,7 +88,7 @@ export function dumpMessageStore(): string {
 		o = Object.getPrototypeOf(o)
 	}
 	const list = [...keys].sort()
-	console.log(`${TAG} MessageStore props (${list.length})`, JSON.stringify(list))
+	if (DEBUG) console.log(`${TAG} MessageStore props (${list.length})`, JSON.stringify(list))
 	return `MessageStore: ${list.length} props (see logcat)`
 }
 
@@ -90,25 +100,25 @@ export function dumpMessageStore(): string {
 export function watchGetMessages(): () => void {
 	const ms = stores().MessageStore
 	if (typeof ms?.getMessages !== 'function') {
-		console.log(`${TAG} getMessages NOT FOUND on MessageStore`)
+		if (DEBUG) console.log(`${TAG} getMessages NOT FOUND on MessageStore`)
 		return () => {}
 	}
 
 	let pendingChannel: any
 	let logged = 0
 	const MAX = 20
-	const before = revenge.patcher.before(ms, 'getMessages', (args: any[]) => {
+	const before = patcher.before(ms, 'getMessages', (args: any[]) => {
 		pendingChannel = args?.[0]
 		return args
 	})
-	const after = revenge.patcher.after(ms, 'getMessages', (ret: any) => {
+	const after = patcher.after(ms, 'getMessages', (ret: any) => {
 		const channelId = pendingChannel
 		pendingChannel = undefined
 		try {
 			if (logged < MAX && ret) {
 				logged++
 				const first = ret?._array?.[0]
-				console.log(
+				if (DEBUG) console.log(
 					`${TAG} getMessages(${channelId}) ->`,
 					JSON.stringify({
 						ctor: ret?.constructor?.name,
@@ -120,7 +130,7 @@ export function watchGetMessages(): () => void {
 				)
 			}
 		} catch (e) {
-			console.error(`${TAG} getMessages probe failed:`, e)
+			reportError(`${TAG} getMessages probe failed:`, e)
 		}
 		return ret
 	})
@@ -166,7 +176,7 @@ export function inspectMessageInstance(): string {
 				protoFuncs: proto && proto !== Object.prototype ? funcsOf(proto) : [],
 			}
 		: null
-	console.log(`${TAG} messageInstance`, JSON.stringify(info))
+	if (DEBUG) console.log(`${TAG} messageInstance`, JSON.stringify(info))
 	if (!info) return 'no usable message'
 	return `${info.ctor} ts=${info.timestampType} methods=${info.ownFuncs.length + info.protoFuncs.length}`
 }
@@ -193,7 +203,7 @@ const NAV_WANTED = [
 const NAV_INTERESTING = /^(open|jump|navigate|transition|goto|handle).*(url|link|message|channel|guild|deeplink|click)$/i
 
 export function probeNavigationModules(): string {
-	const { getInitializedModuleExports, isModuleInitialized } = revenge.modules.metro as any
+	const { getInitializedModuleExports, isModuleInitialized } = metro as any
 
 	const exact: string[] = []
 	const hits: string[] = []
@@ -236,11 +246,11 @@ export function probeNavigationModules(): string {
 		}
 	}
 
-	console.log(`${TAG} navProbe: ${initialized} initialized of ${scanned} scanned, ${hits.length} candidates, ${exact.length} exact`)
-	console.log(`${TAG} navProbe EXACT (${exact.length}):`)
-	for (const line of exact) console.log(`${TAG}   exact ${line}`)
-	console.log(`${TAG} navProbe CANDIDATES (${hits.length}):`)
-	for (const line of hits) console.log(`${TAG}   cand ${line}`)
+	if (DEBUG) console.log(`${TAG} navProbe: ${initialized} initialized of ${scanned} scanned, ${hits.length} candidates, ${exact.length} exact`)
+	if (DEBUG) console.log(`${TAG} navProbe EXACT (${exact.length}):`)
+	for (const line of exact) { if (DEBUG) console.log(`${TAG}   exact ${line}`) }
+	if (DEBUG) console.log(`${TAG} navProbe CANDIDATES (${hits.length}):`)
+	for (const line of hits) { if (DEBUG) console.log(`${TAG}   cand ${line}`) }
 
 	return `${hits.length} candidates, ${exact.length} exact — see adb logcat`
 }
@@ -254,28 +264,28 @@ export function probeNavigationModules(): string {
  * `jumpToMessage`'s exact expected argument shape, before guessing another on-device round.
  */
 export function dumpRoutingModules(): string {
-	const { lookupModule } = revenge.modules.finders as any
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModule } = finders as any
+	const { withProps } = filters
 
 	const describe = (label: string, prop: string) => {
 		try {
 			const mod = lookupModule(withProps(prop))?.[0]
 			if (!mod) {
-				console.log(`${TAG} routing ${label}(${prop}): not found`)
+				if (DEBUG) console.log(`${TAG} routing ${label}(${prop}): not found`)
 				return
 			}
 			const keys = Object.keys(mod)
 				.map(k => `${k}:${typeof mod[k]}`)
 				.join(', ')
-			console.log(`${TAG} routing ${label}(${prop}) own keys: ${keys}`)
+			if (DEBUG) console.log(`${TAG} routing ${label}(${prop}) own keys: ${keys}`)
 			if (mod.default && typeof mod.default === 'object') {
 				const defKeys = Object.keys(mod.default)
 					.map(k => `${k}:${typeof mod.default[k]}`)
 					.join(', ')
-				console.log(`${TAG} routing ${label}(${prop}).default keys: ${defKeys}`)
+				if (DEBUG) console.log(`${TAG} routing ${label}(${prop}).default keys: ${defKeys}`)
 			}
 		} catch (error) {
-			console.error(`${TAG} routing ${label}(${prop}) threw:`, error)
+			reportError(`${TAG} routing ${label}(${prop}) threw:`, error)
 		}
 	}
 
@@ -293,7 +303,7 @@ export function dumpRoutingModules(): string {
  * injection point for persistent restore. Shapes and counts only — never message content.
  */
 export function startMessageLoadProbe(): () => void {
-	const { onAnyFluxEventDispatched } = revenge.discord.flux
+	const { onAnyFluxEventDispatched } = flux
 	const interesting = /MESSAGE|MESSAGES|LOAD|CHANNEL|GUILD/i
 	const seen = new Set<string>()
 
@@ -308,12 +318,12 @@ export function startMessageLoadProbe(): () => void {
 			const channelId =
 				payload?.channelId ?? payload?.channel_id ?? s.SelectedChannelStore?.getChannelId?.()
 			const info = describeChannelMessages(channelId)
-			console.log(
+			if (DEBUG) console.log(
 				`${TAG} probe ${type}`,
 				JSON.stringify({ payloadKeys: Object.keys(payload ?? {}).slice(0, 14), ...info }),
 			)
 		} catch (error) {
-			console.error(`${TAG} probe handler failed:`, error)
+			reportError(`${TAG} probe handler failed:`, error)
 		}
 		return payload
 	})

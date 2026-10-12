@@ -2,6 +2,9 @@ import Checks from './pages/Checks'
 import Debug from './pages/Debug'
 import Privacy from './pages/Privacy'
 import TryDraft from './pages/TryDraft'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.second-thoughts'
 
@@ -16,7 +19,7 @@ export const DEBUG_ROUTE = `${PREFIX}.debug`
  * whichever is actually there.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -26,8 +29,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	// Registered inside `onSettingsModulesLoaded`: it fires immediately when Discord's
 	// settings modules are already loaded, and waits when they are not. Registering
@@ -53,12 +55,12 @@ export function registerPages(): () => void {
 				useTitle: () => 'What leaves the device',
 				screen: { route: PRIVACY_ROUTE, getComponent: () => Privacy },
 			}),
-			registerSettingsItem(DEBUG_ROUTE, {
+			...(DEBUG ? [registerSettingsItem(DEBUG_ROUTE, {
 				parent: null,
 				type: 'route',
 				useTitle: () => 'Debug',
 				screen: { route: DEBUG_ROUTE, getComponent: () => Debug },
-			}),
+			})] : []),
 		]
 
 		refreshSettingsUI()

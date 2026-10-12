@@ -18,6 +18,13 @@ import { assetId, Empty, Native } from './native'
 import ReviewItem from './ReviewItem'
 import { useTarget } from './routes'
 import { token } from './theme'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNativeSafeAreaContext from '@revenge-mod/externals/react-native-safe-area-context'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 /**
  * The bottom bar: Discord's round TextInput and an IconButton send arrow that stays put (disabled
@@ -35,9 +42,8 @@ function Composer({
 	isAuthor: boolean
 	refetch(): void
 }) {
-	const React = revenge.react.React
-	const { View, Pressable, TextInput } = revenge.react.ReactNative
-	const { Button } = revenge.discord.design.Design as any
+	const { View, Pressable, TextInput } = ReactNative
+	const { Button } = Design as any
 	const [text, setText] = React.useState('')
 	const [busy, setBusy] = React.useState(false)
 	const [, rerender] = React.useReducer((n: number) => n + 1, 0)
@@ -109,7 +115,7 @@ function Composer({
 		</View>
 	)
 
-	const { TextInput: DesignInput, IconButton } = revenge.discord.design.Design as any
+	const { TextInput: DesignInput, IconButton } = Design as any
 	const send = assetId('SendMessageIcon')
 	if (!DesignInput || !IconButton || send === undefined) return fallback
 	return (
@@ -141,8 +147,8 @@ function Composer({
 }
 
 function Pager({ page, count, setPage }: { page: number; count: number; setPage(p: number): void }) {
-	const { View } = revenge.react.ReactNative
-	const { Button, Text } = revenge.discord.design.Design as any
+	const { View } = ReactNative
+	const { Button, Text } = Design as any
 	const pages = Math.max(1, Math.ceil(count / REVIEWS_PER_PAGE))
 	if (pages <= 1) return null
 	return (
@@ -166,8 +172,7 @@ function Pager({ page, count, setPage }: { page: number; count: number; setPage(
  *   keyboard's height is added while it's open.
  */
 function useComposerBottom(base: number): { bottom: number; rootRef: any; onRootLayout(): void } {
-	const React = revenge.react.React
-	const { Keyboard, Dimensions } = revenge.react.ReactNative
+	const { Keyboard, Dimensions } = ReactNative
 	const [keyboardTop, setKeyboardTop] = React.useState<number | null>(null)
 	const [keyboardHeight, setKeyboardHeight] = React.useState(0)
 	const [rootBottom, setRootBottom] = React.useState<number | null>(null)
@@ -177,7 +182,7 @@ function useComposerBottom(base: number): { bottom: number; rootRef: any; onRoot
 	let windowBottom = 0
 	try {
 		windowBottom =
-			(revenge.externals.ReactNativeSafeAreaContext as any)?.initialWindowMetrics?.insets?.bottom ?? 0
+			(ReactNativeSafeAreaContext as any)?.initialWindowMetrics?.insets?.bottom ?? 0
 	} catch {
 		/* none */
 	}
@@ -218,15 +223,14 @@ function useComposerBottom(base: number): { bottom: number; rootRef: any; onRoot
 	if (keyboardTop !== null) {
 		const bottomEdge = rootBottom ?? Dimensions.get('window').height
 		overlap = Math.max(bottomEdge - keyboardTop, keyboardHeight)
-		console.log(`[ReviewDB] keyboard: top=${keyboardTop} height=${keyboardHeight} rootBottom=${rootBottom} window=${Dimensions.get("window").height} inset=${inset} -> ${overlap}`)
+		if (DEBUG) console.log(`[ReviewDB] keyboard: top=${keyboardTop} height=${keyboardHeight} rootBottom=${rootBottom} window=${Dimensions.get("window").height} inset=${inset} -> ${overlap}`)
 	}
 	return { bottom: overlap + base, rootRef, onRootLayout: measure }
 }
 
 export default function ReviewsScreen() {
-	const React = revenge.react.React
-	const { View, ScrollView, ActivityIndicator } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View, ScrollView, ActivityIndicator } = ReactNative
+	const { Text } = Design as any
 	const target = useTarget()
 	const { bottom, rootRef, onRootLayout } = useComposerBottom(12)
 	const [page, setPage] = React.useState(1)
@@ -256,7 +260,7 @@ export default function ReviewsScreen() {
 				scrollRef.current?.scrollTo?.({ y: 0, animated: true })
 			})
 			.catch(error => {
-				console.error(`${TAG} getReviews failed:`, error)
+				reportError(`${TAG} getReviews failed:`, error)
 				toast("Couldn't load reviews.")
 			})
 			.finally(() => alive && setLoading(false))

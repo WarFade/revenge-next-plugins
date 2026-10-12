@@ -1,3 +1,10 @@
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import * as modulesFinders from '@revenge-mod/modules/finders'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import * as metro from '@revenge-mod/modules/metro'
+
+const DEBUG: boolean = false
+
 /**
  * A one-shot sweep of Metro's initialized modules, printed to the console.
  *
@@ -37,10 +44,10 @@ const BORING = /^(displayName|name|fileName|typeName|constructor)$/
  */
 const WANTED = ["getName", "useName", "getNickname", "getGlobalName", "getFormattedName", "getUserTag", "useUserTag"]
 
-const log = (line: string) => console.log(`[ScreenshotRedactor] ${line}`)
+const log = (line: string) => { if (DEBUG) console.log(`[ScreenshotRedactor] ${line}`) }
 
 export function probeNameModules(): string {
-	const { getInitializedModuleExports, isModuleInitialized } = revenge.modules.metro as any
+	const { getInitializedModuleExports, isModuleInitialized } = metro as any
 
 	const hits: string[] = []
 	const exact: string[] = []
@@ -101,7 +108,7 @@ export function probeNameModules(): string {
 	// prop sweeps below are noise — they exist only for a build that has moved the files.
 	for (const path of ["utils/UserUtils.tsx", "utils/AvatarUtils.tsx"]) {
 		try {
-			const { lookupModuleWithImportedPath } = revenge.discord.utils.modules.finders
+			const { lookupModuleWithImportedPath } = finders
 			const [exports, id] = lookupModuleWithImportedPath(path)
 			log(
 				id === undefined
@@ -121,8 +128,8 @@ export function probeNameModules(): string {
 	// module by walking ids that `getModules(withProps(...))` never hands to the callback.
 	for (const key of WANTED) {
 		try {
-			const { lookupModules } = revenge.modules.finders as any
-			const { withProps } = revenge.modules.finders.filters
+			const { lookupModules } = modulesFinders as any
+			const { withProps } = filters
 			let found = 0
 			for (const _result of lookupModules(withProps(key))) {
 				found++

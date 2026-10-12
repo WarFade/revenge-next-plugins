@@ -4,6 +4,9 @@ import { repaintShowing } from '../../lib/translate'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { TranslateStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * How a translated message looks.
@@ -13,10 +16,9 @@ import type { TranslateStorage } from '../../types'
  */
 export default function Appearance() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableSwitchRow } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableSwitchRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

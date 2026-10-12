@@ -10,6 +10,9 @@ import TryIt from './pages/TryIt'
 import { safePage } from './safePage'
 import Templates, { TemplateGuide, TemplateHelper, TemplatePlayground, TemplateSnippets, TemplateFormats } from './pages/Templates'
 import WagonServers, { WagonAddServer, WagonPlaceholderPage, WagonServerPage } from './pages/WagonServers'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.send-tweaks'
 
@@ -41,7 +44,7 @@ export const WAGON_PLACEHOLDER_ROUTE = `${PREFIX}.wagon-placeholder`
  * into `refreshSettings`. Which exists depends on the bundle the user is running.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -51,8 +54,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	const route = (key: string, title: string, component: any) =>
 		registerSettingsItem(key, {
@@ -76,7 +78,7 @@ export function registerPages(): () => void {
 			route(READY_TEXT_ROUTE, 'Ready-made rules', ReadyMadeText),
 			route(TRY_ROUTE, 'Try a message', TryIt),
 			// route(STYLES_ROUTE, 'Styles', Styles),
-			route(DEBUG_ROUTE, 'Debug', Debug),
+			...(DEBUG ? [route(DEBUG_ROUTE, 'Debug', Debug)] : []),
 			route(TEMPLATE_ROUTE, 'Template helpers', Templates),
 			route(TEMPLATE_HELPER_ROUTE, 'Insert helper', TemplateHelper),
 			route(TEMPLATE_GUIDE_ROUTE, 'Placeholders', TemplateGuide),

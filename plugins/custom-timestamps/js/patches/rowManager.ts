@@ -1,4 +1,8 @@
 import renderTimestamp, { DEFAULTS, type TimestampStorage } from "../lib/renderTimestamp"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { before, instead } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
 
 // This runs inside RowManager.generate, i.e. on the chat render path. Anything that
 // escapes here crashes the entire ChatView, so the whole body is guarded.
@@ -9,15 +13,15 @@ import renderTimestamp, { DEFAULTS, type TimestampStorage } from "../lib/renderT
 // gives up immediately and permanently caches that as "not found"; getModules subscribes
 // and calls back whenever the module actually loads.
 export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<TimestampStorage>): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	let unpatchBefore: (() => void) | undefined
 	let unpatchAfter: (() => void) | undefined
 
 	const unsubscribe = getModules(withName("RowManager"), (RowManager: any) => {
 		if (!RowManager?.prototype?.generate) {
-			console.error("[CustomTimestamps] RowManager.prototype.generate not found")
+			reportError("[CustomTimestamps] RowManager.prototype.generate not found")
 			return
 		}
 
@@ -28,7 +32,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<Times
 		// "TypeError: Cannot convert undefined value to object" at Hermes' arraySpread, taking
 		// the whole ChatView down. Same family as the `after`-signature bug noted below: this
 		// patcher's hook contracts differ from classic Revenge/Vendetta's.
-		unpatchBefore = revenge.patcher.before(RowManager.prototype, "generate", (args: any[]) => {
+		unpatchBefore = before(RowManager.prototype, "generate", (args: any[]) => {
 			const [row] = args
 			try {
 				const settings = jsonStorage.cache ?? DEFAULTS
@@ -45,7 +49,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<Times
 				// doesn't exist on revenge.discord.common -- see renderTimestamp.ts). The
 				// per-message timestamp above is the primary feature and is unaffected.
 			} catch (error) {
-				console.error("[CustomTimestamps] generate hook failed:", error)
+				reportError("[CustomTimestamps] generate hook failed:", error)
 			}
 			// Outside the try on purpose: the args must survive even if the body above threw.
 			return args
@@ -65,7 +69,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<Times
 		// surfaced as "TypeError: Cannot read property 'options' of undefined" thrown from
 		// Discord's own code, several frames below ours. This is the pattern PalmDevs' own
 		// plugins use.
-		unpatchAfter = revenge.patcher.instead(RowManager.prototype, "generate", function (
+		unpatchAfter = instead(RowManager.prototype, "generate", function (
 			this: any,
 			args: any[],
 			original: any,
@@ -84,7 +88,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<Times
 					message.timestamp = row.message.__customTimestamp
 				}
 			} catch (error) {
-				console.error("[CustomTimestamps] generate return hook failed:", error)
+				reportError("[CustomTimestamps] generate return hook failed:", error)
 			}
 			return ret
 		})

@@ -1,5 +1,11 @@
 import getTag from "../lib/getTag"
 import { DEFAULTS, type StaffTagsStorage } from "../index"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import * as react from "@revenge-mod/react"
+import { reportError } from "../../../../shared/report"
 
 // Resolved inside the exported function, not at module top level: Revenge Next's preInit
 // phase runs before Discord's module registry is populated, and a module finder lookup run
@@ -13,13 +19,13 @@ import { DEFAULTS, type StaffTagsStorage } from "../index"
 // back whenever the module actually loads, matching the pattern Palm's own confirmed-working
 // hide-blocked-messages plugin uses for its one module lookup.
 export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
-	const { GuildStore, ChannelStore } = revenge.discord.flux.Stores as any
+	const { getModules } = finders
+	const { withName } = filters
+	const { GuildStore, ChannelStore } = Stores as any
 	// Same reason as everything else here: `revenge.react.ReactNative` is an ESM live binding
 	// that's still undefined during preInit, so reading it at module scope captures undefined
 	// forever.
-	const { ReactNative } = revenge.react
+	const { ReactNative } = react
 
 	const unpatches: Array<() => void> = []
 
@@ -43,7 +49,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 				// until the stack overflows. `before`/`after` compose with any number of them.
 				// `after` only receives the return value, so the message is stashed in `before`.
 				unpatches.push(
-					revenge.patcher.before(getTagProperties, "default", (args: any[]) => {
+					before(getTagProperties, "default", (args: any[]) => {
 						pendingMessage = args?.[0]?.message
 						// A before-hook must return the args array (porting rule 2).
 						return args
@@ -51,7 +57,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 				)
 
 				unpatches.push(
-					revenge.patcher.after(getTagProperties, "default", (ret: any) => {
+					after(getTagProperties, "default", (ret: any) => {
 						const message = pendingMessage
 						pendingMessage = undefined
 						try {
@@ -84,7 +90,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 								tagType: undefined,
 							}
 						} catch (error) {
-							console.error("[StaffTags] chat tag failed:", error)
+							reportError("[StaffTags] chat tag failed:", error)
 							// The after-hook's return value is assigned unconditionally, so the
 							// original result must survive a failure here.
 							return ret
@@ -92,7 +98,7 @@ export default (jsonStorage: RevengeJsonStorageApi<StaffTagsStorage>) => {
 					}),
 				)
 			} catch (error) {
-				console.error("[StaffTags] could not patch getTagProperties:", error)
+				reportError("[StaffTags] could not patch getTagProperties:", error)
 			}
 		},
 		{ returnNamespace: true },

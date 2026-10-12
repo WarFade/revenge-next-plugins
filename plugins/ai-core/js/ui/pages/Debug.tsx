@@ -6,17 +6,19 @@ import { hostOf } from './Provider'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { AiCoreStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 const TEST_ID = 'bleelblep.ai-core (connection test)'
 
 /** Developer tools only. Anything that spends money or prints internals belongs here. */
 export default function Debug() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

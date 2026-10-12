@@ -15,10 +15,12 @@
  */
 
 import { debug } from './state'
+import { Stores } from '@revenge-mod/discord/flux'
+import * as commonFlux from '@revenge-mod/discord/common/flux'
 
 function dispatcher(): any {
 	try {
-		return (revenge.discord.common as any)?.flux?.Dispatcher
+		return (commonFlux as any)?.Dispatcher
 	} catch {
 		return undefined
 	}
@@ -26,7 +28,7 @@ function dispatcher(): any {
 
 function messageFrom(channelId: string, messageId: string): any {
 	try {
-		const store = (revenge.discord.flux.Stores as any)?.MessageStore
+		const store = (Stores as any)?.MessageStore
 		return store?.getMessage?.(channelId, messageId)
 	} catch {
 		return undefined

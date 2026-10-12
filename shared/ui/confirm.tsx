@@ -1,3 +1,6 @@
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+
 /**
  * Asks before a destructive action, in Discord's own alert dialog (`AlertModal`), with the action
  * in red above Cancel. For danger rows (docs/plugin-design-language.md §3.8 and checklist item 6).
@@ -10,8 +13,8 @@ export function confirmDestructive(options: {
 	action: string
 	onConfirm(): void
 }) {
-	const { AlertModal, AlertActionButton } = revenge.discord.design.Design as any
-	const Alerts = revenge.discord.actions.AlertActionCreators as any
+	const { AlertModal, AlertActionButton } = Design as any
+	const Alerts = AlertActionCreators as any
 	const key = `bleelblep-confirm-${Date.now()}`
 	Alerts.openAlert(
 		key,

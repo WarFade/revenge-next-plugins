@@ -2,6 +2,9 @@ import Appearance from './pages/Appearance'
 import Debug from './pages/Debug'
 import Language from './pages/Language'
 import Service from './pages/Service'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.translate'
 
@@ -15,7 +18,7 @@ export const DEBUG_ROUTE = `${PREFIX}.debug`
  * into `refreshSettings`. Which exists depends on the bundle the user is running.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -25,8 +28,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	const route = (key: string, title: string, component: any) =>
 		registerSettingsItem(key, {
@@ -45,7 +47,7 @@ export function registerPages(): () => void {
 			route(LANGUAGE_ROUTE, 'Translate into', Language),
 			route(SERVICE_ROUTE, 'Service', Service),
 			route(APPEARANCE_ROUTE, 'Appearance', Appearance),
-			route(DEBUG_ROUTE, 'Debug', Debug),
+			...(DEBUG ? [route(DEBUG_ROUTE, 'Debug', Debug)] : []),
 		]
 
 		refreshSettingsUI()

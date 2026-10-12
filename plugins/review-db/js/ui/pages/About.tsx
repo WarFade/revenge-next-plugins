@@ -7,11 +7,14 @@ import { rowIcon } from '../../../../../shared/ui/icon'
 import { useBottomPadding } from '../../../../../shared/ui/safeArea'
 import { openURL } from '../../lib/discord'
 import { getToken } from '../../lib/state'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 export default function About() {
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableRow } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableRow } = Design as any
 
 	return (
 		<Page>

@@ -11,12 +11,16 @@ import { fetchBlocks, unblockUser } from '../lib/api'
 import { defaultAvatar, TAG } from '../lib/discord'
 import type { ReviewDBUser } from '../lib/entities'
 import { getToken } from '../lib/state'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
 
 export default function BlockedUsers() {
-	const React = revenge.react.React
-	const { Page } = revenge.components
-	const { ScrollView, Image, ActivityIndicator } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, Button } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { ScrollView, Image, ActivityIndicator } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, Button } = Design as any
 	const bottom = useBottomPadding()
 	const [blocks, setBlocks] = React.useState<ReviewDBUser[] | null>(null)
 	const [error, setError] = React.useState<string | null>(null)
@@ -28,7 +32,7 @@ export default function BlockedUsers() {
 		fetchBlocks()
 			.then(setBlocks)
 			.catch((e: any) => {
-				console.error(`${TAG} failed to fetch blocks:`, e)
+				reportError(`${TAG} failed to fetch blocks:`, e)
 				setError(String(e?.message ?? e))
 			})
 	}, [])

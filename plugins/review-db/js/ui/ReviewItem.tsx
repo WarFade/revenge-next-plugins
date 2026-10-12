@@ -24,6 +24,10 @@ import { isBotUser, Tag, UserAvatar } from './native'
 import { openBlockedUsers } from './routes'
 import { token } from './theme'
 import type { Badge, Review } from '../lib/entities'
+import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 const SHEET_KEY = 'ReviewDBReviewActions'
 
@@ -61,7 +65,7 @@ function formatDate(seconds: number) {
 }
 
 function ReviewBadge({ badge }: { badge: Badge }) {
-	const { Image, Pressable } = revenge.react.ReactNative
+	const { Image, Pressable } = ReactNative
 	return (
 		<Pressable
 			accessibilityLabel={badge.name}
@@ -85,8 +89,8 @@ function ReviewBadge({ badge }: { badge: Badge }) {
  * Upvote/downvote arrows are pressable to vote.
  */
 function Votes({ review }: { review: Review }) {
-	const { View, Pressable } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View, Pressable } = ReactNative
+	const { Text } = Design as any
 	const vote = useVote(review)
 	const { localVote, score, isVoting, submitVote } = vote
 	const Up = icon('ArrowSmallUpIcon')
@@ -161,7 +165,6 @@ function Votes({ review }: { review: Review }) {
 }
 
 function useVote(review: Review) {
-	const React = revenge.react.React
 	const [localVote, setLocalVote] = React.useState<boolean | null>(
 		review.userVote ?? null,
 	)
@@ -214,9 +217,8 @@ function ReviewActionsSheet({
 	profileId: string
 	refetch(): void
 }) {
-	const { ActionSheet, BottomSheetTitleHeader, TableRowGroup, TableRow } =
-		revenge.discord.design.Design as any
-	const { hideActionSheet } = revenge.discord.actions.ActionSheetActionCreators
+	const { ActionSheet, BottomSheetTitleHeader, TableRowGroup, TableRow } = Design as any
+	const { hideActionSheet } = ActionSheetActionCreators
 	const isAuthorBlocked =
 		getAuth().user?.blockedUsers?.includes(review.sender.discordID) ?? false
 	const run = (fn: () => void) => () => {
@@ -238,7 +240,7 @@ function ReviewActionsSheet({
 					icon={rowIcon('CopyIcon')}
 					onPress={run(() => {
 						try {
-							const Clipboard = (revenge.react.ReactNative as any)?.Clipboard
+							const Clipboard = (ReactNative as any)?.Clipboard
 							if (typeof Clipboard?.setString !== 'function')
 								throw new Error('no clipboard')
 							Clipboard.setString(review.comment)
@@ -320,7 +322,7 @@ function ReviewActionsSheet({
 }
 
 function openActions(review: Review, profileId: string, refetch: () => void) {
-	revenge.discord.actions.ActionSheetActionCreators.openLazy(
+	ActionSheetActionCreators.openLazy(
 		Promise.resolve({ default: ReviewActionsSheet }),
 		SHEET_KEY,
 		{ review, profileId, refetch } as any,
@@ -336,9 +338,8 @@ export default function ReviewItem({
 	refetch(): void
 	profileId: string
 }) {
-	const React = revenge.react.React
-	const { View, Pressable } = revenge.react.ReactNative
-	const { Text } = revenge.discord.design.Design as any
+	const { View, Pressable } = ReactNative
+	const { Text } = Design as any
 	const [showAll, setShowAll] = React.useState(false)
 	const { hideTimestamps } = settings()
 

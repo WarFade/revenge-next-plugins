@@ -13,6 +13,7 @@ import type { StickerStorage } from './types'
 import Settings from './ui/Settings'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export default plugin<{ jsonStorage: StickerStorage }>({
 	jsonStorage: {
@@ -21,6 +22,10 @@ export default plugin<{ jsonStorage: StickerStorage }>({
 	},
 
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		if (plugin.startedLate) {
 			plugin.requireReload()
 			return
@@ -32,7 +37,7 @@ export default plugin<{ jsonStorage: StickerStorage }>({
 		try {
 			cleanup(installPatches())
 		} catch (error) {
-			console.error(`${TAG} failed to install:`, error)
+			reportError(`${TAG} failed to install:`, error)
 		}
 	},
 

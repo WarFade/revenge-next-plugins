@@ -1,9 +1,12 @@
 import { getCachedLog, getLogVersion, rehydrateChannel } from '../ui/state'
 import type { DeletedMessage } from '../ui/state'
 import type { GhostLogSettings } from '../types'
+import { Stores, getStore } from '@revenge-mod/discord/flux'
+import * as patcher from '@revenge-mod/patcher'
+import { reportError } from '../../../../shared/report'
 
 function stores() {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 // The probe proved _array holds MessageRecord class instances (timestamp is a Date, author is a
@@ -68,7 +71,7 @@ function recordFor(entry: DeletedMessage, channelId: string): any {
 		recordCache.set(entry.id, { record, media })
 		return record
 	} catch (error) {
-		console.error(`[GhostLogNativeBeta] createMessageRecord failed for ${entry.id}:`, error)
+		reportError(`[GhostLogNativeBeta] createMessageRecord failed for ${entry.id}:`, error)
 		return undefined
 	}
 }
@@ -221,16 +224,16 @@ export function patchRenderRestore(getSettings: () => GhostLogSettings): () => v
 	let uninstall: (() => void) | undefined
 	let unwait: (() => void) | undefined
 	try {
-		unwait = revenge.discord.flux.getStore('MessageStore', (ms: any) => {
+		unwait = getStore('MessageStore', (ms: any) => {
 			if (cancelled || uninstall) return
 			try {
 				uninstall = installRenderRestore(ms, getSettings)
 			} catch (error) {
-				console.error('[GhostLogNativeBeta] render restore failed to install:', error)
+				reportError('[GhostLogNativeBeta] render restore failed to install:', error)
 			}
 		})
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] waiting for MessageStore failed; render restore disabled:', error)
+		reportError('[GhostLogNativeBeta] waiting for MessageStore failed; render restore disabled:', error)
 	}
 	return () => {
 		cancelled = true
@@ -242,7 +245,7 @@ export function patchRenderRestore(getSettings: () => GhostLogSettings): () => v
 
 function installRenderRestore(ms: any, getSettings: () => GhostLogSettings): () => void {
 	if (typeof ms?.getMessages !== 'function') {
-		console.error('[GhostLogNativeBeta] getMessages not found; render restore disabled')
+		reportError('[GhostLogNativeBeta] getMessages not found; render restore disabled')
 		return () => {}
 	}
 
@@ -271,13 +274,13 @@ function installRenderRestore(ms: any, getSettings: () => GhostLogSettings): () 
 	// through the clone already.)
 	const edgeId = (array: any[], index: number) => String(array[index]?.id ?? '')
 
-	const before = revenge.patcher.before(ms, 'getMessages', (args: any[]) => {
+	const before = patcher.before(ms, 'getMessages', (args: any[]) => {
 		if (pendingChannels.length > 32) pendingChannels.splice(0, pendingChannels.length - 32)
 		pendingChannels.push(args?.[0])
 		return args
 	})
 
-	const after = revenge.patcher.after(ms, 'getMessages', (ret: any) => {
+	const after = patcher.after(ms, 'getMessages', (ret: any) => {
 		const pending = pendingChannels.pop()
 		const channelId = pending != null ? String(pending) : undefined
 		try {
@@ -354,7 +357,7 @@ function installRenderRestore(ms: any, getSettings: () => GhostLogSettings): () 
 				return clone
 			}
 		} catch (error) {
-			console.error('[GhostLogNativeBeta] render restore hook failed:', error)
+			reportError('[GhostLogNativeBeta] render restore hook failed:', error)
 		}
 		return ret
 	})

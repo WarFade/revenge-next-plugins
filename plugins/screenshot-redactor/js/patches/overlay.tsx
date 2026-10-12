@@ -1,6 +1,11 @@
 import { noteOverlayHost } from "../lib/diagnostics"
 import { settings } from "../lib/state"
 import RedactToggle from "../ui/components/RedactToggle"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after } from "@revenge-mod/patcher"
+import * as react from "@revenge-mod/react"
+import { reportError } from "../../../../shared/report"
 
 /**
  * Mounts the floating toggle over the chat.
@@ -31,8 +36,8 @@ const HOST_CANDIDATES = [
 ]
 
 export default function patchOverlay(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	const cleanups: Array<() => void> = []
 	const unsubscribes: Array<() => void> = []
@@ -50,13 +55,13 @@ export default function patchOverlay(): () => void {
 
 					try {
 						cleanups.push(
-							revenge.patcher.after(mod, "default", (el: any) => {
+							after(mod, "default", (el: any) => {
 								// Runs on a render path -- return the element on every path.
 								try {
 									if (el == null) return el
 									if (!settings().showOverlayToggle) return el
 
-									const { React } = revenge.react
+									const { React } = react
 									return React.createElement(
 										React.Fragment,
 										null,
@@ -64,7 +69,7 @@ export default function patchOverlay(): () => void {
 										React.createElement(RedactToggle, null),
 									)
 								} catch (error) {
-									console.error("[ScreenshotRedactor] overlay render failed:", error)
+									reportError("[ScreenshotRedactor] overlay render failed:", error)
 									return el
 								}
 							}),
@@ -73,7 +78,7 @@ export default function patchOverlay(): () => void {
 						mounted = true
 						noteOverlayHost(name)
 					} catch (error) {
-						console.error(`[ScreenshotRedactor] failed to mount overlay on ${name}:`, error)
+						reportError(`[ScreenshotRedactor] failed to mount overlay on ${name}:`, error)
 					}
 				},
 				{ returnNamespace: true },

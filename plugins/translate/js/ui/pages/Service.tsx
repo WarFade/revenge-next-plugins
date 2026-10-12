@@ -3,6 +3,10 @@ import { PROVIDERS } from '../../lib/providers'
 import { getStorage } from '../../lib/state'
 import { useBottomPadding } from '../safeArea'
 import type { TranslateStorage } from '../../types'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /**
  * Which service to ask first.
@@ -13,12 +17,10 @@ import type { TranslateStorage } from '../../types'
  */
 export default function Service() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRadioGroup, TableRadioRow } =
-		revenge.discord.design.Design
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRadioGroup, TableRadioRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { goBack: () => void }
 	const storage = getStorage()

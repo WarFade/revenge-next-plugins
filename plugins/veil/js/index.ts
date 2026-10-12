@@ -23,6 +23,7 @@ import { CATEGORY_ROUTE, registerPages } from './ui/routes'
 import type { AiHandle, VeilStorage } from './types'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export { DEFAULTS }
 export type { VeilStorage }
@@ -34,6 +35,10 @@ export default plugin<{ jsonStorage: VeilStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied -- Discord modules it patches
 		// may already be initialized and its settings routes are registered too late for the
 		// settings screen. Ask for a reload instead of running in a state we cannot verify.
@@ -54,7 +59,7 @@ export default plugin<{ jsonStorage: VeilStorage }>({
 		try {
 			ai?.setSettingsRoute?.(CATEGORY_ROUTE)
 		} catch (error) {
-			console.error(`${TAG} could not register a settings route with AI Core:`, error)
+			reportError(`${TAG} could not register a settings route with AI Core:`, error)
 		}
 		cleanup(() => setAi(undefined))
 
@@ -63,7 +68,7 @@ export default plugin<{ jsonStorage: VeilStorage }>({
 			try {
 				cleanup(install())
 			} catch (error) {
-				console.error(`${TAG} failed to apply ${name}:`, error)
+				reportError(`${TAG} failed to apply ${name}:`, error)
 			}
 		}
 		apply('settings pages', registerPages)

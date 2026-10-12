@@ -4,13 +4,16 @@ import { getSettingsStorage, useLog } from '../state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { GhostLogSettings } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 const ID = 'bleelblep.ghost-log-native-beta'
 
 export default function Options() {
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableSwitchRow, TableRadioGroup, TableRadioRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableSwitchRow, TableRadioGroup, TableRadioRow } = Design
 
 	const storage = getSettingsStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

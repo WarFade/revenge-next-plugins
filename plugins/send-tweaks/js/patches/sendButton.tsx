@@ -54,6 +54,13 @@ import { settings, TAG } from '../lib/state'
 import { type Stop, type SwipeActions, setSwipe, setSwipeDistance, stopAt } from '../lib/swipe'
 import { wrapRender } from '../lib/wrapRender'
 import SwipeIndicator from '../ui/components/SwipeIndicator'
+import { getModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
+import { Vibration } from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const PATH = 'modules/chat_input/native/action_buttons/ChatInputActionButton.tsx'
 const ICON_PATH = 'design/components/Icon/native/redesign/generated/SendMessageIcon.tsx'
@@ -69,7 +76,7 @@ const gesture = { touched: false, armed: false, stop: 0 as Stop, startY: 0 }
 
 function buzz(ms: number) {
 	try {
-		revenge.react.ReactNative.Vibration.vibrate(ms)
+		Vibration.vibrate(ms)
 	} catch {
 		/* no vibration is fine */
 	}
@@ -107,7 +114,7 @@ function chain(element: any, name: string, ours: (event: any) => void) {
 		try {
 			ours(event)
 		} catch (error) {
-			console.error(`${TAG} send button ${name} failed:`, error)
+			reportError(`${TAG} send button ${name} failed:`, error)
 		}
 	}
 }
@@ -193,7 +200,7 @@ function swipeProps(element: any, send: unknown, actions: SwipeActions, getDraft
  */
 function buttonRadius(element: any): number | undefined {
 	try {
-		const { StyleSheet } = revenge.react.ReactNative
+		const { StyleSheet } = ReactNative
 		let node = element
 		for (let depth = 0; depth < 4 && node; depth++) {
 			const style = typeof node.props?.style === 'function' ? node.props.style({ pressed: false }) : node.props?.style
@@ -210,7 +217,7 @@ function buttonRadius(element: any): number | undefined {
 
 function buttonColour(element: any, props: any): unknown {
 	try {
-		const { StyleSheet } = revenge.react.ReactNative
+		const { StyleSheet } = ReactNative
 		const own = StyleSheet.flatten(element?.props?.style)?.backgroundColor
 		if (own != null) return own
 		const child = StyleSheet.flatten(element?.props?.children?.props?.style)?.backgroundColor
@@ -240,7 +247,7 @@ function tapProps(send: unknown, getDraft: () => string | undefined) {
 					return
 				}
 			} catch (error) {
-				console.error(`${TAG} tap preview failed, sending normally:`, error)
+				reportError(`${TAG} tap preview failed, sending normally:`, error)
 			}
 			sendFn?.(...args)
 		},
@@ -254,7 +261,6 @@ function SwipeButton({
 	actions,
 	tapPreview,
 }: { element: any; buttonProps: any; actions: SwipeActions; tapPreview: boolean }) {
-	const React = revenge.react.React
 	const composer = React.useContext(composerContext())
 	const getDraft = () => readComposer(composer)
 	const swipe = actions.preview || actions.send
@@ -293,18 +299,18 @@ export default function patchSendButton(): () => void {
 				if (!sendIcon || icon !== sendIcon || !element?.props) return element
 				return <SwipeButton element={element} buttonProps={props} actions={actions} tapPreview={tapPreview} />
 			} catch (error) {
-				console.error(`${TAG} send button long-press failed:`, error)
+				reportError(`${TAG} send button long-press failed:`, error)
 				return element
 			}
 		})
 		if (!unwrap) {
-			console.error(`${TAG} could not wrap the send button: module ${id} is neither memo(forwardRef) nor memo(function)`)
+			reportError(`${TAG} could not wrap the send button: module ${id} is neither memo(forwardRef) nor memo(function)`)
 			return
 		}
 
 		status.installed = true
 		status.moduleId = id
-		console.log(`${TAG} send button long-press on module ${id}`)
+		if (DEBUG) console.log(`${TAG} send button long-press on module ${id}`)
 		undo = () => {
 			active = false
 			unwrap()
@@ -314,18 +320,18 @@ export default function patchSendButton(): () => void {
 	let unsubscribe: (() => void) | undefined
 	let unsubscribeIcon: (() => void) | undefined
 	try {
-		unsubscribeIcon = revenge.discord.utils.modules.finders.getModuleWithImportedPath(
+		unsubscribeIcon = getModuleWithImportedPath(
 			ICON_PATH,
 			(exports: any) => {
 				sendIcon = exports?.SendMessageIcon
 			},
 		)
-		unsubscribe = revenge.discord.utils.modules.finders.getModuleWithImportedPath(
+		unsubscribe = getModuleWithImportedPath(
 			PATH,
 			(exports: any, id: number) => install(exports, id),
 		)
 	} catch (error) {
-		console.error(`${TAG} could not look for the send button:`, error)
+		reportError(`${TAG} could not look for the send button:`, error)
 	}
 
 	return () => {

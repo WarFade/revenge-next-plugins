@@ -17,6 +17,7 @@ import Settings from './ui/pages/Settings'
 import { registerPages } from './ui/routes'
 import { CHANGELOG } from './changelog'
 import { setupChangelog } from '../../../shared/changelog'
+import { reportError, setReporter } from '../../../shared/report'
 
 export default plugin<{ jsonStorage: ReviewDBStorage }>({
 	jsonStorage: {
@@ -24,6 +25,10 @@ export default plugin<{ jsonStorage: ReviewDBStorage }>({
 		default: DEFAULTS,
 	},
 	start({ cleanup, jsonStorage, plugin }) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(plugin)
+		cleanup(() => setReporter(undefined))
+
 		// Hooks on modules Discord already rendered with can't be verified mid-session.
 		if (plugin.startedLate) {
 			plugin.requireReload()
@@ -44,14 +49,14 @@ export default plugin<{ jsonStorage: ReviewDBStorage }>({
 			try {
 				cleanup(install())
 			} catch (error) {
-				console.error(`${TAG} failed to install the ${name}:`, error)
+				reportError(`${TAG} failed to install the ${name}:`, error)
 			}
 		}
 
 		// Desktop waits 4 seconds after start too: the current user has to be known, and the
 		// notice dialog shouldn't land on the splash screen.
 		const timer = setTimeout(() => {
-			refreshUser({ notify: true }).catch(error => console.error(`${TAG} startup refresh failed:`, error))
+			refreshUser({ notify: true }).catch(error => reportError(`${TAG} startup refresh failed:`, error))
 		}, 4000)
 		cleanup(() => clearTimeout(timer))
 	},

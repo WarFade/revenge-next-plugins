@@ -7,6 +7,10 @@ import { Empty } from '../native'
 import { useBottomPadding } from '../safeArea'
 import { openDeletedSheet, pressMedia } from '../sheets'
 import { clearNativeLog, type DeletedMessage, refreshLog, useLog } from '../state'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 type Filter = 'all' | 'servers' | 'dms' | 'media'
 
@@ -53,10 +57,10 @@ function toRows(entries: DeletedMessage[]): Row[] {
  * chat shows one, with its saved media. Tap jumps to where it was; long-press for the rest.
  */
 export default function Log() {
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { FlatList, RefreshControl, View } = revenge.react.ReactNative as any
-	const { TableRowGroup, TableRow, Text } = revenge.discord.design.Design as any
+	const { Page } = components
+	const { React } = react
+	const { FlatList, RefreshControl, View } = ReactNative as any
+	const { TableRowGroup, TableRow, Text } = Design as any
 
 	const entries = useLog()
 	const bottomPadding = useBottomPadding()

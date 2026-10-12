@@ -57,6 +57,10 @@ import { type OneOff, takeNextSend } from '../lib/nextSend'
 import { makeSilent } from '../lib/silent'
 import { withSendContext } from '../lib/greetings'
 import { withSendRandom } from '../lib/random'
+import { onFluxEventDispatched } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const status = {
 	installed: false,
@@ -116,7 +120,7 @@ export default function patchOutgoing(): () => void {
 	const patches: Array<() => void> = []
 
 	patches.push(
-		revenge.discord.flux.onFluxEventDispatched(
+		onFluxEventDispatched(
 			'MESSAGE_START_EDIT',
 			(payload: any) => {
 				try {
@@ -126,7 +130,7 @@ export default function patchOutgoing(): () => void {
 					withSendContext({ channelId: payload.channelId ?? payload.channel_id }, () => rewrite(draft, 'draft'))
 					return draft
 				} catch (error) {
-					console.error(`${TAG} edit draft rewrite failed:`, error)
+					reportError(`${TAG} edit draft rewrite failed:`, error)
 					return payload
 				}
 			},
@@ -181,7 +185,7 @@ export default function patchOutgoing(): () => void {
 				status.installed = true
 				status.moduleId = id
 				// Log the outcome, not the attempt -- porting rule 3.
-				console.log(`${TAG} rewriting outgoing messages on module ${id}`)
+				if (DEBUG) console.log(`${TAG} rewriting outgoing messages on module ${id}`)
 			},
 		),
 	)

@@ -7,6 +7,8 @@
  */
 
 import type { Verdict } from '../../types'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
 
 const ALERT_KEY = 'SecondThoughtsHold'
 
@@ -40,8 +42,8 @@ export function openHoldAlert({
 	onSnooze,
 }: HoldAlertOptions) {
 	// Read per call, never at module scope -- porting rule 1.
-	const { AlertModal, AlertActionButton } = revenge.discord.design.Design
-	const Alerts = revenge.discord.actions.AlertActionCreators
+	const { AlertModal, AlertActionButton } = Design
+	const Alerts = AlertActionCreators
 
 	// `onDismiss` fires for a button press as well as a tap-away, so the two have to be told
 	// apart or choosing "Send anyway" would also restore the draft.

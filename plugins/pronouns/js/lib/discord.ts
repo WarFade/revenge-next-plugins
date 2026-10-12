@@ -15,6 +15,9 @@
  */
 
 import { getModuleByPath } from '../../../../shared/modules'
+import * as filters from '@revenge-mod/modules/finders/filters'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
 
 const PROFILE_STORE = 'modules/user_profile/UserProfileStore.tsx'
 const ACTIONS = 'actions/UserActionCreators.tsx'
@@ -48,7 +51,7 @@ export function watchDiscord(): () => void {
 				})
 				subscribed = true
 			} catch (error) {
-				console.error(`${TAG} profile store subscription failed:`, error)
+				reportError(`${TAG} profile store subscription failed:`, error)
 			}
 		}
 		return true
@@ -58,19 +61,21 @@ export function watchDiscord(): () => void {
 	// alone never fired at startup, which made badges wait for the user to open a profile (the
 	// only thing that initialised the module). The path finder stays as the fallback.
 	try {
-		bind((revenge as any).discord?.flux?.Stores?.UserProfileStore)
+		bind((Stores as any)?.UserProfileStore)
 	} catch (error) {
-		console.error(`${TAG} profile store lookup failed:`, error)
+		reportError(`${TAG} profile store lookup failed:`, error)
 	}
 
 	undo.push(
 		getModuleByPath(PROFILE_STORE, null, (mod: any) => {
+			// Usually the Stores proxy above already bound it; then this is the same store, not a failure.
+			if (store) return
 			if (!bind(mod) && !bind(mod?.default)) {
-				console.error(`${TAG} profile store found but unusable`)
+				reportError(`${TAG} profile store found but unusable`)
 			}
 		}, TAG),
 	)
-	const { withProps } = revenge.modules.finders.filters
+	const { withProps } = filters
 	undo.push(
 		getModuleByPath(ACTIONS, withProps('fetchProfile', 'fetchCurrentUser'), (mod: any) => {
 			const fn = mod?.fetchProfile ?? mod?.default?.fetchProfile
@@ -204,7 +209,7 @@ function pump() {
 			finish(true)
 		}
 	} catch (error) {
-		console.error(`${TAG} profile fetch failed:`, error)
+		reportError(`${TAG} profile fetch failed:`, error)
 		finish(false)
 	}
 }

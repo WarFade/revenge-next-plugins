@@ -3,6 +3,13 @@ import { noteNamePatch, noteResolverSkipped } from "../lib/diagnostics"
 import { isEnabled, settings } from "../lib/state"
 import { findUserObject } from "../lib/userArgs"
 import { patchResolver, resolverHosts, ResolverSlots } from "../lib/resolverHooks"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModuleWithImportedPath } from "@revenge-mod/discord/utils/modules/finders"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * Redacting names *wherever the client resolves them* — inline `@mentions`, the member list, the
@@ -112,13 +119,13 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 				if (!redactResolvedNames) return ret
 
 				if (!redactSelf) {
-					const { UserStore } = revenge.discord.flux.Stores as any
+					const { UserStore } = Stores as any
 					if (UserStore?.getCurrentUser?.()?.id === userId) return ret
 				}
 
 				return redactedName(userId, style)
 			} catch (error) {
-				console.error("[ScreenshotRedactor] name hook failed:", error)
+				reportError("[ScreenshotRedactor] name hook failed:", error)
 			}
 
 			return ret
@@ -127,7 +134,7 @@ function patchOne(namespace: any, key: string, label: string, cleanups: Array<()
 
 	if (key === "getName") getNameHooked = true
 
-	console.log(`[ScreenshotRedactor] hooked name resolver: ${label}`)
+	if (DEBUG) console.log(`[ScreenshotRedactor] hooked name resolver: ${label}`)
 	noteNamePatch(label)
 }
 
@@ -160,7 +167,7 @@ function patchNamespace(
 				hooked++
 			}
 		} catch (error) {
-			console.error(`[ScreenshotRedactor] failed to patch ${key}:`, error)
+			reportError(`[ScreenshotRedactor] failed to patch ${key}:`, error)
 		}
 	}
 
@@ -196,8 +203,8 @@ function resolverCount(mod: any): number {
  * fired" look identical from a settings page, and telling them apart is what took five releases.
  */
 function sweepFor(key: string, seen: ResolverSlots, cleanups: Array<() => void>): () => void {
-	const { lookupModules, waitForModules } = revenge.modules.finders
-	const { withProps } = revenge.modules.finders.filters
+	const { lookupModules, waitForModules } = finders
+	const { withProps } = filters
 
 	const onModule = (mod: any, id: unknown) => {
 		// `getName` and `useName` are ordinary export names; on 348 a second module (4988) carries
@@ -215,13 +222,13 @@ function sweepFor(key: string, seen: ResolverSlots, cleanups: Array<() => void>)
 	try {
 		for (const [exports, id] of lookupModules(withProps(key))) onModule(exports, id)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] lookup sweep for ${key} failed:`, error)
+		reportError(`[ScreenshotRedactor] lookup sweep for ${key} failed:`, error)
 	}
 
 	try {
 		return waitForModules(withProps(key), onModule)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] wait sweep for ${key} failed:`, error)
+		reportError(`[ScreenshotRedactor] wait sweep for ${key} failed:`, error)
 		return () => {}
 	}
 }
@@ -251,11 +258,11 @@ export default function patchDisplayName(): () => void {
 	// current build it answers synchronously.
 	try {
 		unsubscribes.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(MODULE_PATH, (mod: any, id: unknown) => {
+			getModuleWithImportedPath(MODULE_PATH, (mod: any, id: unknown) => {
 				// On 348.1 the path answers *after* the sweep has already hooked every resolver on this
 				// same module, so nothing new to hook is success. Only a module without them is a miss.
 				if (patchNamespace(mod, `path, module ${String(id)}`, seen, cleanups) === 0 && resolverCount(mod) === 0) {
-					console.error(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no resolver`)
+					reportError(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no resolver`)
 					noteResolverSkipped(MODULE_PATH)
 					return
 				}
@@ -264,7 +271,7 @@ export default function patchDisplayName(): () => void {
 			}),
 		)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
+		reportError(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
 	}
 
 	// Only when the path has not answered yet: a moved file, or a module not initialized yet. If
@@ -276,7 +283,7 @@ export default function patchDisplayName(): () => void {
 	// Reaction rows call this distinct resolver with (guildId, channelId, user). A guild
 	// nickname can bypass UserUtils entirely; the user is the subject, not either id argument.
 	try {
-		unsubscribes.push(revenge.discord.utils.modules.finders.getModuleWithImportedPath("utils/NicknameUtils.tsx", (mod: any) => {
+		unsubscribes.push(getModuleWithImportedPath("utils/NicknameUtils.tsx", (mod: any) => {
 			for (const host of resolverHosts(mod, "getNickname")) {
 				if (seen.has(host, "getNickname")) continue
 				patchOne(host, "getNickname", "NicknameUtils.getNickname", cleanups)
@@ -284,7 +291,7 @@ export default function patchDisplayName(): () => void {
 			}
 		}))
 	} catch (error) {
-		console.error("[ScreenshotRedactor] NicknameUtils discovery failed:", error)
+		reportError("[ScreenshotRedactor] NicknameUtils discovery failed:", error)
 	}
 
 	return () => {

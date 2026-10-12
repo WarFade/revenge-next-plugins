@@ -1,5 +1,8 @@
 import { DEFAULTS } from '../defaults'
 import type { AiHandle, TldrStorage } from '../types'
+import { showToast } from '../../../../shared/toast'
+
+const DEBUG: boolean = false
 
 export const TAG = '[TLDR]'
 
@@ -31,15 +34,12 @@ export function getAi(): AiHandle | undefined {
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({
-			key: 'TldrToast',
-			content,
-		})
+		showToast(content, 'TldrToast')
 	} catch {
 		/* a missing toast must never turn a summary into a crash */
 	}

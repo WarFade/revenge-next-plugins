@@ -3,6 +3,13 @@ import { noteAvatarPatch, noteResolverSkipped } from "../lib/diagnostics"
 import { isEnabled, settings } from "../lib/state"
 import { findUserIdField, findUserObject } from "../lib/userArgs"
 import { patchResolver, resolverHosts, ResolverSlots } from "../lib/resolverHooks"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModuleWithImportedPath } from "@revenge-mod/discord/utils/modules/finders"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * The avatar beside a name, on every surface that isn't a message row.
@@ -100,7 +107,7 @@ function subjectOf(args: any[]): string | undefined {
 	if (!userId) return undefined
 
 	if (!settings().redactSelf) {
-		const { UserStore } = revenge.discord.flux.Stores as any
+		const { UserStore } = Stores as any
 		if (UserStore?.getCurrentUser?.()?.id === userId) return undefined
 	}
 
@@ -137,14 +144,14 @@ function patchOne(namespace: any, key: string, kind: "url" | "source", cleanups:
 
 				return ret
 			} catch (error) {
-				console.error("[ScreenshotRedactor] avatar hook failed:", error)
+				reportError("[ScreenshotRedactor] avatar hook failed:", error)
 			}
 
 			return ret
 		}),
 	)
 
-	console.log(`[ScreenshotRedactor] hooked avatar resolver: ${key}`)
+	if (DEBUG) console.log(`[ScreenshotRedactor] hooked avatar resolver: ${key}`)
 	noteAvatarPatch(key)
 }
 
@@ -163,7 +170,7 @@ function patchNamespace(mod: any, seen: ResolverSlots, cleanups: Array<() => voi
 				hooked++
 			}
 		} catch (error) {
-			console.error(`[ScreenshotRedactor] failed to patch ${key}:`, error)
+			reportError(`[ScreenshotRedactor] failed to patch ${key}:`, error)
 		}
 	}
 
@@ -184,14 +191,14 @@ export default function patchAvatar(): () => void {
 
 	try {
 		unsubscribes.push(
-			revenge.discord.utils.modules.finders.getModuleWithImportedPath(MODULE_PATH, (mod: any) => {
+			getModuleWithImportedPath(MODULE_PATH, (mod: any) => {
 				// Nothing new to hook is also what happens when the sweep got here first (348.1), so
 				// only a module with none of the resolvers is a miss.
 				const carries = [...URL_RESOLVERS, ...SOURCE_RESOLVERS].some(
 					key => typeof mod?.[key] === "function" || typeof mod?.default?.[key] === "function",
 				)
 				if (patchNamespace(mod, seen, cleanups) === 0 && !carries) {
-					console.error(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no avatar resolver`)
+					reportError(`[ScreenshotRedactor] ${MODULE_PATH} found but carries no avatar resolver`)
 					noteResolverSkipped(MODULE_PATH)
 					return
 				}
@@ -201,7 +208,7 @@ export default function patchAvatar(): () => void {
 			}),
 		)
 	} catch (error) {
-		console.error(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
+		reportError(`[ScreenshotRedactor] imported-path lookup for ${MODULE_PATH} failed:`, error)
 	}
 
 	// Fallback for a build that has moved the file, and only then. `getUserAvatarSource` is
@@ -210,8 +217,8 @@ export default function patchAvatar(): () => void {
 	// `patches/displayName.ts`.
 	if (!pathHooked) {
 		try {
-			const { lookupModules, waitForModules } = revenge.modules.finders
-			const { withProps } = revenge.modules.finders.filters
+			const { lookupModules, waitForModules } = finders
+			const { withProps } = filters
 			const filter = () => withProps("getUserAvatarSource")
 
 			const onModule = (mod: any) => {
@@ -221,7 +228,7 @@ export default function patchAvatar(): () => void {
 			for (const [exports] of lookupModules(filter())) onModule(exports)
 			if (!pathHooked) stopSweep = waitForModules(filter(), onModule)
 		} catch (error) {
-			console.error("[ScreenshotRedactor] avatar sweep failed:", error)
+			reportError("[ScreenshotRedactor] avatar sweep failed:", error)
 		}
 	}
 	unsubscribes.push(() => stopSweep?.())

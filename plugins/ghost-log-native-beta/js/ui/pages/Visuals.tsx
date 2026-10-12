@@ -3,6 +3,9 @@ import { getSettingsStorage } from '../state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { DeleteStyle, GhostLogSettings } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 const STYLE_OPTIONS: Array<{
 	value: DeleteStyle
@@ -31,9 +34,9 @@ const STYLE_OPTIONS: Array<{
 ]
 
 export default function Visuals() {
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRadioGroup, TableRadioRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRadioGroup, TableRadioRow } = Design
 
 	const storage = getSettingsStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

@@ -4,20 +4,26 @@ import { folderTint } from "../theme"
 import ContextMenu from "./ContextMenu"
 import GuildRow, { useSelectedGuildId } from "./GuildRow"
 import GuildIcon from "./GuildIcon"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import * as assets from "@revenge-mod/assets"
+import { Stores } from "@revenge-mod/discord/flux"
+import { getModules } from "@revenge-mod/modules/finders"
+import { withProps } from "@revenge-mod/modules/finders/filters"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // revenge.utils.toast.show doesn't exist -- was a guess, confirmed wrong on-device
-// ("Cannot read property 'show' of undefined" at preInit). ToastActionCreators.open is
-// confirmed live from revenge-bundle-next's own source (used by the staff-settings and
-// developer-kit internal plugins).
+// ("Cannot read property 'show' of undefined" at preInit). Toasts go through shared/toast.ts,
+// which picks the ToastActionCreators signature this Discord build has (it changed on 350.4).
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "HideServersDrawerToast", content })
+	sharedToast(content, "HideServersDrawerToast")
 }
 // getAssetIdByName (lowercase "d"), under revenge.assets not revenge.components -- confirmed
 
 // Flux stores are looked up by name directly through the Stores proxy, not a module finder
 // filter -- there is no `withStoreName` under modules.finders.filters.
 // Read per call, never at module scope -- see docs/porting-rules.md rule 1.
-const stores = (): any => revenge.discord.flux.Stores
+const stores = (): any => Stores
 
 // getModules, not lookupModule: confirmed on-device (staff-tags plugin) that a lazily-loaded
 // module can still be unregistered even from inside start() -- this file's top-level code
@@ -25,7 +31,7 @@ const stores = (): any => revenge.discord.flux.Stores
 // registry is populated. lookupModule gives up immediately and permanently caches a false
 // "not found"; getModules subscribes and calls back whenever the module actually loads.
 let guildActions: any
-revenge.modules.finders.getModules(revenge.modules.finders.filters.withProps("toggleGuildFolderExpand"), (mod: any) => {
+getModules(withProps("toggleGuildFolderExpand"), (mod: any) => {
 	guildActions = mod
 })
 
@@ -37,7 +43,7 @@ const MINI = 16
 let folderAsset: number | undefined
 function folderAssetId() {
 	if (folderAsset === undefined) {
-		const { getAssetIdByName } = revenge.assets
+		const { getAssetIdByName } = assets
 		folderAsset = getAssetIdByName("FolderIcon") ?? getAssetIdByName("ic_folder")
 	}
 	return folderAsset
@@ -52,7 +58,7 @@ const POS = [
 
 function useFolderExpanded(folderId: string | number): boolean {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
+	const { React } = react
 	const { ExpandedGuildFolderStore } = stores()
 
 	const [open, setOpen] = React.useState(() => {
@@ -83,8 +89,8 @@ function useFolderExpanded(folderId: string | number): boolean {
 
 /** node: { type: "folder", id, name, color, children: [{ id, ... }] } from SortedGuildStore.getGuildsTree(). */
 export default function FolderRow({ node }: { node: any }) {
-	const { React } = revenge.react
-	const { Pressable, View, Image } = revenge.react.ReactNative
+	const { React } = react
+	const { Pressable, View, Image } = ReactNative
 
 	const open = useFolderExpanded(node.id)
 	const selectedId = useSelectedGuildId()

@@ -10,11 +10,17 @@ import { expandPlaceholders, withSendContext } from '../../lib/greetings'
 import { expandRandom } from '../../lib/random'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
+import { showToast } from '../../../../../shared/toast'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 function TemplatePage({ children }: { children?: ReactNode }) {
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack } = Design
 	const paddingBottom = useBottomPadding()
 	return <Page>{greetingsUnlocked() ? <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom }}><Stack spacing={24}>{children}</Stack></ScrollView> : null}</Page>
 }
@@ -51,8 +57,8 @@ const HELPERS: Array<{ title: string; items: Helper[] }> = [
 let selectedHelper: Helper = HELPERS[0].items[0]
 
 export default function Templates() {
-	const { TableRowGroup, TableRow, Text } = revenge.discord.design.Design
-	const navigation = revenge.externals.ReactNavigation.ReactNavigationNative.useNavigation() as any
+	const { TableRowGroup, TableRow, Text } = Design
+	const navigation = ReactNavigationNative.useNavigation() as any
 	const s = useSettings()
 	const servers = s.wagonServers ?? []
 	const own: Helper[] = (s.wagonPlaceholders ?? []).map(entry => ({ key: entry.key, label: `{${entry.key}}`, description: 'Your placeholder: its value depends on the server', example: entry.value || '(blank)' }))
@@ -74,9 +80,9 @@ export default function Templates() {
 }
 
 export function TemplateHelper() {
-	const { React } = revenge.react
-	const { Text, TableRowGroup, TableRow, TextInput } = revenge.discord.design.Design
-	const navigation = revenge.externals.ReactNavigation.ReactNavigationNative.useNavigation() as any
+	const { React } = react
+	const { Text, TableRowGroup, TableRow, TextInput } = Design
+	const navigation = ReactNavigationNative.useNavigation() as any
 	const [helper] = React.useState(selectedHelper)
 	const [fallback, setFallback] = React.useState('')
 	const [choices, setChoices] = React.useState('Hai, Hewo, Hey')
@@ -102,7 +108,7 @@ export function TemplateHelper() {
 		{stamp ? <TableRowGroup title="Display">{[['R', 'Relative time'], ['t', 'Time'], ['T', 'Time with seconds'], ['d', 'Short date'], ['D', 'Long date'], ['f', 'Date and time'], ['F', 'Full date and time']].map(([value, label]) => <TableRow key={value} label={`${format === value ? '✓ ' : ''}${label}`} onPress={() => setFormat(value)} />)}{helper.key === 'timestamp' ? <FieldRow label="When" description="Blank means now. +30m = in 30 minutes; +1d = tomorrow."><TextInput value={offset} onChange={setOffset} /></FieldRow> : null}</TableRowGroup> : null}
 		{!choice ? <TableRowGroup><FieldRow label="Fallback text" description="Optional text when information is unavailable."><TextInput value={fallback} onChange={setFallback} /></FieldRow></TableRowGroup> : null}
 		<TableRowGroup title="Example"><TableRow label={example} subLabel={syntax} /></TableRowGroup>
-		<TableRowGroup><TableRow label="Insert into rule" subLabel="Adds this helper at the end of Replace with" disabled={!templateSession().apply} onPress={insert} /><TableRow label="Copy syntax" onPress={() => { copyText(syntax); revenge.discord.actions.ToastActionCreators.open({ key: 'TemplateCopied', content: 'Syntax copied.' }) }} /></TableRowGroup>
+		<TableRowGroup><TableRow label="Insert into rule" subLabel="Adds this helper at the end of Replace with" disabled={!templateSession().apply} onPress={insert} /><TableRow label="Copy syntax" onPress={() => { copyText(syntax); showToast('Syntax copied.', 'TemplateCopied') }} /></TableRowGroup>
 	</TemplatePage>
 }
 
@@ -129,8 +135,8 @@ const GROUPS = [
 ]
 
 export function TemplateGuide() {
-	const { React } = revenge.react
-	const { Text, TableRowGroup, TableRow } = revenge.discord.design.Design
+	const { React } = react
+	const { Text, TableRowGroup, TableRow } = Design
 	const [notice, setNotice] = React.useState('Tap an example to copy it.')
 	return <TemplatePage>
 		<Text variant="text-sm/normal" color="text-muted">{notice}</Text>
@@ -140,7 +146,7 @@ export function TemplateGuide() {
 }
 
 export function TemplatePlayground() {
-	const navigation = revenge.externals.ReactNavigation.ReactNavigationNative.useNavigation() as any
+	const navigation = ReactNavigationNative.useNavigation() as any
 	const session = templateSession()
 	return <TemplatePage><TemplateTools mode="playground" initial={session.initial} apply={session.apply ? text => { session.apply?.(text); navigation.goBack(); navigation.goBack(); } : undefined} /></TemplatePage>
 }

@@ -12,6 +12,9 @@
  * Call from inside a component's render: `revenge.*` is read here, so module scope is out
  * (docs/porting-rules.md rule 1).
  */
+import * as discordDesign from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
+
 interface FieldRowProps {
 	/** The row's label: names the field. */
 	label: string
@@ -28,7 +31,7 @@ interface FieldRowProps {
  */
 function design(): any {
 	try {
-		const Design = revenge.discord.design.Design as any
+		const Design = discordDesign.Design as any
 		return Design?.TableRow ? Design : undefined
 	} catch {
 		return undefined
@@ -40,7 +43,7 @@ function design(): any {
  * reads on light and dark themes alike; the theme's colours come from the same lookup that failed.
  */
 function PlainFieldRow({ label, description, children }: FieldRowProps) {
-	const { View, Text } = revenge.react.ReactNative
+	const { View, Text } = ReactNative
 	return (
 		<View style={{ gap: 8, paddingHorizontal: 16, paddingVertical: 12 }}>
 			<Text style={{ fontSize: 16, fontWeight: '600', color: '#9a9aa2' }}>{label}</Text>
@@ -55,7 +58,7 @@ function PlainFieldRow({ label, description, children }: FieldRowProps) {
  * ReactNode, so the row paints its background. Put several in one TableRowGroup for related fields.
  */
 export function FieldRow({ label, description, children }: FieldRowProps) {
-	const { View } = revenge.react.ReactNative
+	const { View } = ReactNative
 	const Design = design()
 	if (!Design) return <PlainFieldRow label={label} description={description}>{children}</PlainFieldRow>
 	const { TableRow, Text } = Design
@@ -83,7 +86,7 @@ export function FieldRow({ label, description, children }: FieldRowProps) {
 export function FieldGroup({ title, ...row }: FieldRowProps & { title?: string }) {
 	const TableRowGroup = design()?.TableRowGroup
 	if (!TableRowGroup) {
-		const { View } = revenge.react.ReactNative
+		const { View } = ReactNative
 		return (
 			<View>
 				<FieldRow {...row} />

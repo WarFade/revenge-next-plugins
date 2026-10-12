@@ -3,6 +3,9 @@ import renderTimestamp, { DEFAULTS, type Mode, type TimestampStorage } from "../
 import { CustomTimeInputRow } from "../components/CustomTimeInputRow"
 import { SelectableRow } from "../components/SelectableRow"
 import { useChangelog } from "../../../../../shared/changelog"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
 
 interface ModeOption {
 	label: string
@@ -19,9 +22,9 @@ export default function Settings({
 	useChangelog()
 	// Read per-render, never at module scope -- see the "Never touch revenge.* at module scope"
 	// section in the README.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableSwitchRow } = Design
 
 	const { selected, customFormat, separateMessages } = api.jsonStorage.use() ?? DEFAULTS
 

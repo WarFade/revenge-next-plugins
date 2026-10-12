@@ -1,5 +1,6 @@
 import type { MenuItem } from "../../lib/guildMenu"
 import { dangerText, pressedOverlay, sheetBackdrop, sheetBackground, textMuted, textNormal } from "../theme"
+import * as ReactNative from "react-native"
 
 /**
  * Fallback only -- GuildRow tries Discord's own action sheet first (lib/guildMenu.ts) for
@@ -18,7 +19,7 @@ export default function ContextMenu({
 	onClose: () => void
 }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Modal, Pressable, View, Text } = revenge.react.ReactNative
+	const { Modal, Pressable, View, Text } = ReactNative
 
 	if (!visible) return null
 

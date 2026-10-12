@@ -4,6 +4,10 @@ import { scanPatterns } from '../../lib/secrets'
 import { aiStatus, getStorage } from '../../lib/state'
 import { FieldGroup } from '../fieldGroup'
 import { useBottomPadding } from '../safeArea'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 const EXAMPLES = [
 	'sk-abcdefghijklmnopqrstuvwxyz123456',
@@ -23,11 +27,9 @@ const EXAMPLES = [
  */
 export default function TryDraft() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, Text, TableRowGroup, TableRow, TextInput, Card } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TextInput, Card } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

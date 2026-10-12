@@ -1,4 +1,9 @@
 import { DEFAULTS, type ShowTagStorage } from "../index"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
 
 // A zero-width space, prepended to the rewritten name in "only show usernames" mode. Carried
 // over from Cynosphere's original -- it stops Discord's own header logic from recognising the
@@ -19,7 +24,7 @@ function patchReplyPreview(generated: any, onlyUsername: boolean) {
 	const ref = generated.referencedMessage?.message
 	if (!ref?.username) return
 
-	const { UserStore } = revenge.discord.flux.Stores as any
+	const { UserStore } = Stores as any
 	const user = UserStore.getUser(ref.authorId)
 	if (isTagless(user)) return
 
@@ -45,8 +50,8 @@ function patchReplyPreview(generated: any, onlyUsername: boolean) {
 // start() on a cold launch -- lookupModule would give up and permanently cache the miss. See
 // docs/porting-rules.md.
 export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<ShowTagStorage>): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	let unpatchBefore: (() => void) | undefined
 	let unpatchAfter: (() => void) | undefined
@@ -65,11 +70,11 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<ShowT
 
 	const unsubscribe = getModules(withName("RowManager"), (RowManager: any) => {
 		if (!RowManager?.prototype?.generate) {
-			console.error("[ShowTag] RowManager.prototype.generate not found")
+			reportError("[ShowTag] RowManager.prototype.generate not found")
 			return
 		}
 
-		unpatchBefore = revenge.patcher.before(RowManager.prototype, "generate", (args: any[]) => {
+		unpatchBefore = before(RowManager.prototype, "generate", (args: any[]) => {
 			pendingRow = args?.[0]
 			// A before-hook must return the args array -- returning nothing sets args to
 			// undefined for every later hook. See docs/porting-rules.md rule 2.
@@ -78,7 +83,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<ShowT
 
 		// This runs on the chat render path -- anything escaping here takes down the whole
 		// ChatView, so the body is guarded and the result is returned on every path.
-		unpatchAfter = revenge.patcher.after(RowManager.prototype, "generate", (ret: any) => {
+		unpatchAfter = after(RowManager.prototype, "generate", (ret: any) => {
 			const row = pendingRow
 			pendingRow = undefined
 
@@ -118,7 +123,7 @@ export default function patchRowManager(jsonStorage: RevengeJsonStorageApi<ShowT
 
 				patchReplyPreview(generated, false)
 			} catch (error) {
-				console.error("[ShowTag] generate hook failed:", error)
+				reportError("[ShowTag] generate hook failed:", error)
 			}
 
 			return ret

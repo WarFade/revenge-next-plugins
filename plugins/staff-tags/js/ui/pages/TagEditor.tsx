@@ -16,13 +16,18 @@ import { FieldGroup, FieldRow } from '../fieldGroup'
 import { ICONS_ROUTE } from '../routes'
 import { useBottomPadding } from '../safeArea'
 import TagIcon from '../TagIcon'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /** Everything about one tag. Reached from the list, which sets the tag being edited. */
 export default function TagEditor() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const React = revenge.react.React
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
 	const {
 		Stack,
 		Text,
@@ -33,10 +38,9 @@ export default function TagEditor() {
 		TextInput,
 		AlertModal,
 		AlertActionButton,
-	} = revenge.discord.design.Design
-	const Alerts = revenge.discord.actions.AlertActionCreators
-	const { useNavigation } =
-		revenge.externals.ReactNavigation.ReactNavigationNative
+	} = Design
+	const Alerts = AlertActionCreators
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 	// Re-render on any storage write, so a change made here shows immediately.

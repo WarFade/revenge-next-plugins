@@ -1,16 +1,19 @@
+import { FieldRow } from '../fieldGroup'
 import { DEFAULTS } from '../../defaults'
 import { getStorage } from '../../lib/state'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { CatchUpStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** Behaviour toggles only. Developer tools live on their own route. */
 export default function Options() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableSwitchRow, Slider } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, TableRowGroup, TableSwitchRow, Slider } = Design
 
 	// A plain navigator route, so there is no plugin `api` prop here.
 	const storage = getStorage()
@@ -21,10 +24,8 @@ export default function Options() {
 		<Page>
 			<ScrollView contentContainerStyle={{ paddingBottom: useBottomPadding() }}>
 				<Stack spacing={24}>
-					<TableRowGroup
-						title={`How much to read — ${s.defaultCount} messages`}
-					>
-						<View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+					<TableRowGroup>
+						<FieldRow label={`How much to read — ${s.defaultCount} messages`}>
 							<Text color="text-muted" variant="text-sm/normal">
 								Used when you run /catchup with no number. More messages cost
 								more per call and give a broader summary, not a better one —
@@ -40,7 +41,7 @@ export default function Options() {
 									set({ defaultCount: Math.round(value) })
 								}
 							/>
-						</View>
+						</FieldRow>
 					</TableRowGroup>
 
 					<TableRowGroup title="Behaviour" hasIcons>

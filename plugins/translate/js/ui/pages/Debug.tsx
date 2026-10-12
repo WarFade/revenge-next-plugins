@@ -8,14 +8,16 @@ import { rowStatus } from '../../patches/rowManager'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { TranslateStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as ReactNative from 'react-native'
 
 /** Developer tools only. Reports outcomes, never intentions -- porting rule 3. */
 export default function Debug() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

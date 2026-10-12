@@ -3,6 +3,9 @@ import Debug from './pages/Debug'
 import Rules from './pages/Rules'
 import Topics from './pages/Topics'
 import Words from './pages/Words'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.veil'
 
@@ -19,7 +22,7 @@ export const DEBUG_ROUTE = `${PREFIX}.debug`
  * whichever is actually there.
  */
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -29,8 +32,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	const page = (route: string, title: string, component: any) =>
 		registerSettingsItem(route, {
@@ -50,7 +52,7 @@ export function registerPages(): () => void {
 			page(CATEGORY_ROUTE, 'Described rules', Topics),
 			page(RULES_ROUTE, 'People and channels', Rules),
 			page(APPEARANCE_ROUTE, 'How it looks', Appearance),
-			page(DEBUG_ROUTE, 'Debug', Debug),
+			...(DEBUG ? [page(DEBUG_ROUTE, 'Debug', Debug)] : []),
 		]
 
 		refreshSettingsUI()

@@ -9,6 +9,13 @@ import { redactMessage } from "../lib/rowSchema"
 import { currentUserId, isEnabled, settings } from "../lib/state"
 import { ensureChatManagerPatched } from "./chatManager"
 import { ensureDmHeaderPatched } from "./dmHeader"
+import * as finders from "@revenge-mod/modules/finders"
+import * as filters from "@revenge-mod/modules/finders/filters"
+import * as patcher from "@revenge-mod/patcher"
+import { after, before } from "@revenge-mod/patcher"
+import { reportError } from "../../../../shared/report"
+
+const DEBUG: boolean = false
 
 /**
  * Chat redaction runs on the *data* a message row is built from, not on the rendered tree.
@@ -42,9 +49,9 @@ function dumpRowShape(generated: any) {
 			const cdn = typeof value === "string" && value.includes("cdn.discordapp.com")
 			return `${key}:${kind}${cdn ? "(cdn)" : ""}`
 		})
-		console.log("[ScreenshotRedactor] generated row shape:", shape.join(" "))
+		if (DEBUG) console.log("[ScreenshotRedactor] generated row shape:", shape.join(" "))
 	} catch (error) {
-		console.error("[ScreenshotRedactor] row dump failed:", error)
+		reportError("[ScreenshotRedactor] row dump failed:", error)
 	}
 }
 
@@ -63,7 +70,7 @@ function dumpRowShape(generated: any) {
 const MAX_DEPTH = 32
 
 function patchOne(RowManager: any, cleanups: Array<() => void>) {
-	const { HookPriority } = revenge.patcher as any
+	const { HookPriority } = patcher as any
 
 	// Deliberately NOT `instead`: custom-timestamps already owns the one permitted `instead` on
 	// this method, and a second one can infinitely recurse in this patcher. before/after are
@@ -84,7 +91,7 @@ function patchOne(RowManager: any, cleanups: Array<() => void>) {
 	const stack: any[] = []
 
 	cleanups.push(
-		revenge.patcher.before(RowManager.prototype, "generate", (args: any[]) => {
+		before(RowManager.prototype, "generate", (args: any[]) => {
 			if (stack.length >= MAX_DEPTH) stack.length = 0
 			stack.push(args?.[0])
 			noteDepth(stack.length)
@@ -96,7 +103,7 @@ function patchOne(RowManager: any, cleanups: Array<() => void>) {
 	)
 
 	cleanups.push(
-		revenge.patcher.after(
+		after(
 			RowManager.prototype,
 			"generate",
 			(ret: any) => {
@@ -163,7 +170,7 @@ function patchOne(RowManager: any, cleanups: Array<() => void>) {
 					if (changed) count("rowsRedacted")
 					else count("skippedSelf")
 				} catch (error) {
-					console.error("[ScreenshotRedactor] generate hook failed:", error)
+					reportError("[ScreenshotRedactor] generate hook failed:", error)
 				}
 
 				return ret
@@ -184,8 +191,8 @@ function patchOne(RowManager: any, cleanups: Array<() => void>) {
 // start() on a cold launch -- lookupModule would give up and permanently cache the miss.
 // See docs/porting-rules.md rule 3.
 export default function patchRowManager(): () => void {
-	const { getModules } = revenge.modules.finders
-	const { withName } = revenge.modules.finders.filters
+	const { getModules } = finders
+	const { withName } = filters
 
 	const cleanups: Array<() => void> = []
 	// Two module entries can resolve to the same class; patching its prototype twice would
@@ -196,7 +203,7 @@ export default function patchRowManager(): () => void {
 		withName("RowManager"),
 		(RowManager: any) => {
 			if (!RowManager?.prototype?.generate) {
-				console.error("[ScreenshotRedactor] RowManager.prototype.generate not found")
+				reportError("[ScreenshotRedactor] RowManager.prototype.generate not found")
 				return
 			}
 			if (seen.has(RowManager.prototype)) return
@@ -205,7 +212,7 @@ export default function patchRowManager(): () => void {
 			try {
 				patchOne(RowManager, cleanups)
 			} catch (error) {
-				console.error("[ScreenshotRedactor] failed to patch a RowManager:", error)
+				reportError("[ScreenshotRedactor] failed to patch a RowManager:", error)
 			}
 		},
 		// `max` defaults to 1, so the plain call patches only the *first* RowManager and stops.

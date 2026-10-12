@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 import { SELECTED_RADIUS } from "../layout"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // borderRadius and backgroundColor can't run on the native driver (only opacity and
 // transforms can), so this one is JS-driven. It's a single small view per row and only
@@ -29,8 +31,8 @@ export default function MorphIcon({
 	children: ReactNode
 }) {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { React } = revenge.react
-	const { Animated } = revenge.react.ReactNative
+	const { React } = react
+	const { Animated } = ReactNative
 
 	const progress = React.useRef(new Animated.Value(selected ? 1 : 0)).current
 

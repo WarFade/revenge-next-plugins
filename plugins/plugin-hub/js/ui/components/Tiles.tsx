@@ -20,6 +20,10 @@
 
 import { rowIcon } from '../icon'
 import type { Entry } from '../../types'
+import { Design } from '@revenge-mod/discord/design'
+import { lookupModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /** Fixed colours for a re-skinned hub (Cornhub); without one, the theme's own colours are used. */
 export interface TilePalette {
@@ -43,7 +47,7 @@ const CIRCLE_WASH = 'rgba(128, 132, 142, 0.18)'
 
 /** The tinted circle with the plugin's icon in it. Smaller on the wide card, which sits among rows. */
 function IconCircle({ icon, size = CIRCLE, wash = CIRCLE_WASH }: { icon?: string; size?: number; wash?: string }) {
-	const { View } = revenge.react.ReactNative
+	const { View } = ReactNative
 	return (
 		<View
 			style={{
@@ -75,7 +79,7 @@ function RowArrow() {
 	if (TableRowArrow === undefined) {
 		try {
 			const [exports] =
-				revenge.discord.utils.modules.finders.lookupModuleWithImportedPath<any>(ARROW_PATH)
+				lookupModuleWithImportedPath<any>(ARROW_PATH)
 			TableRowArrow = typeof exports?.TableRowArrow === 'function' ? exports.TableRowArrow : null
 		} catch {
 			TableRowArrow = null
@@ -112,8 +116,8 @@ export function Tile({
 	description?: string
 	palette?: TilePalette
 }) {
-	const { View, Pressable } = revenge.react.ReactNative
-	const { Text, Card: ThemedCard } = revenge.discord.design.Design
+	const { View, Pressable } = ReactNative
+	const { Text, Card: ThemedCard } = Design
 
 	// A palette swaps the themed card and text colours for fixed ones; the layout is unchanged.
 	const Card = palette
@@ -220,8 +224,7 @@ export function Grid({
 	columns: number
 	children: (tileWidth: number) => any
 }) {
-	const { View } = revenge.react.ReactNative
-	const React = revenge.react.React
+	const { View } = ReactNative
 	const [width, setWidth] = React.useState(0)
 	const tile = width ? Math.floor((width - GAP * (columns - 1)) / columns) : 0
 

@@ -1,3 +1,5 @@
+import { getModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
+
 /**
  * Replaces the render function of a component found by its module path: `render` on a
  * `memo(forwardRef(render))` (Discord up to 349), or `type` on a `memo(render)` (350.2 alpha dropped
@@ -42,7 +44,7 @@ export function wrapRender(
 
 	let unsubscribe: (() => void) | undefined
 	try {
-		unsubscribe = revenge.discord.utils.modules.finders.getModuleWithImportedPath(path, (exports: any, id: any) => {
+		unsubscribe = getModuleWithImportedPath(path, (exports: any, id: any) => {
 			try {
 				install(exports, id)
 			} catch (error) {

@@ -15,13 +15,15 @@
 // rendering it. Patching React.createElement itself catches every construction site, cached
 // references included, because React always goes through this call to build an element.
 
+import * as React from 'react'
+
 interface Intercept {
 	replacement: any
 	extraProps?: Record<string, any>
 }
 
 const intercepts = new Map<any, Intercept>()
-let original: typeof revenge.react.React.createElement | null = null
+let original: typeof React.createElement | null = null
 let patched = false
 
 export function registerIntercept(target: any, replacement: any, extraProps?: Record<string, any>) {
@@ -35,7 +37,6 @@ export function unregisterIntercept(target: any) {
 export function patchCreateElement(cleanups: Array<() => void>) {
 	if (patched) return
 
-	const React = revenge.react.React
 	original = React.createElement
 	if (!original) return
 
@@ -49,12 +50,12 @@ export function patchCreateElement(cleanups: Array<() => void>) {
 	}
 
 	Object.assign(wrapped, original)
-	React.createElement = wrapped as typeof React.createElement
+	;(React as any).createElement = wrapped
 	patched = true
 
 	cleanups.push(() => {
 		if (patched && original) {
-			React.createElement = original
+			;(React as any).createElement = original
 			patched = false
 		}
 		intercepts.clear()

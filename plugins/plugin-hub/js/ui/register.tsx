@@ -43,6 +43,14 @@ import {
 	SETTINGS_ROUTE,
 } from './routes'
 import type { Entry } from '../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as S from '@revenge-mod/discord/modules/settings'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const SECTION = 'BLEELBLEP_HUB'
 const SHORTCUTS_SECTION = 'BLEELBLEP_HUB_SHORTCUTS'
@@ -80,10 +88,10 @@ const shortcutKey = (id: string) => `BleelblepHubPin.${id}`
  */
 function shortcutScreen(entry: Entry) {
 	return function PluginHubShortcut({ navigation }: { navigation: any }) {
-		const { React } = revenge.react
-		const { Page } = revenge.components
-		const { View } = revenge.react.ReactNative
-		const { Text } = revenge.discord.design.Design
+		const { React } = react
+		const { Page } = components
+		const { View } = ReactNative
+		const { Text } = Design
 
 		const routeNames: string[] | undefined = navigation?.getState?.()?.routeNames
 		// Unknown route list (an unexpected navigator): try anyway rather than refuse.
@@ -95,7 +103,7 @@ function shortcutScreen(entry: Entry) {
 				if (typeof navigation.replace === 'function') navigation.replace(entry.id)
 				else navigation.navigate(entry.id)
 			} catch (error) {
-				console.error(`[PluginHub] could not open ${entry.id}:`, error)
+				reportError(`[PluginHub] could not open ${entry.id}:`, error)
 			}
 		}, [])
 
@@ -117,7 +125,6 @@ function shortcutScreen(entry: Entry) {
 }
 
 export function registerHub(): () => void {
-	const S = revenge.discord.modules.settings
 	const cleanups: Array<() => void> = []
 
 	/** The shortcut rows and the section that lists them, rebuilt whenever the choice changes. */
@@ -278,7 +285,7 @@ export function registerHub(): () => void {
 		})
 		placement.where = 'in the Plugin Hub section'
 
-		console.log(`[PluginHub] Hub rows registered ${placement.where}`)
+		if (DEBUG) console.log(`[PluginHub] Hub rows registered ${placement.where}`)
 		refreshSettingsUI()
 	}
 

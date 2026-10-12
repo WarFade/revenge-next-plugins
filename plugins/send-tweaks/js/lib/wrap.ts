@@ -1,3 +1,5 @@
+import { reportError } from '../../../../shared/report'
+
 /**
  * Runs `beforeCall` on a method's arguments before every call, by replacing the method with a
  * plain function rather than hooking it through `revenge.patcher`.
@@ -40,7 +42,7 @@ export function wrapMethod(
 				beforeCall(args)
 			} catch (error) {
 				// Never stand between the user and the send: the call goes ahead unchanged.
-				console.error(`[SendTweaks] ${key} rewrite failed:`, error)
+				reportError(`[SendTweaks] ${key} rewrite failed:`, error)
 			}
 		}
 		return original.apply(this, args)
@@ -48,7 +50,7 @@ export function wrapMethod(
 	host[key] = wrapper
 	if (host[key] !== wrapper) {
 		// A read-only property: nothing was installed, so there is nothing to undo.
-		console.error(`[SendTweaks] could not wrap ${key}`)
+		reportError(`[SendTweaks] could not wrap ${key}`)
 		return () => {}
 	}
 

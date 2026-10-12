@@ -2,7 +2,8 @@
  * Long-press a server avatar on a profile for the person's main avatar (the tap shows the server
  * one). The original plugin's long-press.
  *
- * `HeaderAvatar` (modules/profile_customization/native/HeaderAvatar.tsx, a forwardRef) renders a
+ * `HeaderAvatar` (modules/profile_customization/native/HeaderAvatar.tsx, a forwardRef up to 349, a
+ * plain function from 350.2) renders a
  * PressableOpacity with `onLongPress: onPress` whenever it's openable, so a long-press just repeats
  * the tap. A `before` on its `render` stashes the props, and the `after` swaps `onLongPress` on the
  * returned pressable. Only when there's an `onPress` (a profile avatar Discord already made
@@ -10,6 +11,12 @@
  */
 
 import { FULL_SIZE, fullSize, openImage, TAG } from '../lib/media'
+import * as finders from '@revenge-mod/discord/utils/modules/finders'
+import { after, before } from '@revenge-mod/patcher'
+import * as React from 'react'
+import { reportError } from '../../../../shared/report'
+
+const DEBUG: boolean = false
 
 const PATH = 'modules/profile_customization/native/HeaderAvatar.tsx'
 
@@ -21,7 +28,7 @@ function otherAvatar(user: any, guildId: string | undefined): string | undefined
 		const url = user.getAvatarURL(undefined, FULL_SIZE, true)
 		if (typeof url === "string") return fullSize(url)
 	} catch (error) {
-		console.error(`${TAG} avatar URL failed:`, error)
+		reportError(`${TAG} avatar URL failed:`, error)
 	}
 	return undefined
 }
@@ -33,43 +40,52 @@ export default function patchAvatar(): () => void {
 
 	const apply = (mod: any) => {
 		try {
-			const target = mod?.default
-			if (typeof target?.render !== 'function') {
-				console.error(`${TAG} HeaderAvatar.render not found`)
+			// A forwardRef up to 349 (hook its `render`); a plain function from 350.2, which dropped
+			// forwardRef app-wide (hook the module's `default` itself).
+			const value = mod?.default
+			const [target, key] =
+				typeof value?.render === 'function'
+					? [value, 'render']
+					: typeof value?.type === 'function'
+						? [value, 'type']
+						: typeof value === 'function'
+							? [mod, 'default']
+							: [undefined, '']
+			if (!target) {
+				reportError(`${TAG} HeaderAvatar render not found`)
 				return
 			}
 			patches.push(
-				revenge.patcher.before(target, 'render', (args: any[]) => {
+				before(target, key, (args: any[]) => {
 					lastProps = args?.[0]
 					return args
 				}),
-				revenge.patcher.after(target, 'render', (ret: any) => {
+				after(target, key, (ret: any) => {
 					const props = lastProps
 					lastProps = undefined
 					try {
 						if (!ret?.props || typeof ret.props.onPress !== 'function' || !props?.user) return ret
 						const url = otherAvatar(props.user, props.guildId)
 						if (!url) return ret
-						const React = revenge.react.React
 						return React.cloneElement(ret, {
 							onLongPress: () => openImage(url),
 						})
 					} catch (error) {
-						console.error(`${TAG} avatar long-press failed:`, error)
+						reportError(`${TAG} avatar long-press failed:`, error)
 						return ret
 					}
 				}),
 			)
-			console.log(`${TAG} hooked HeaderAvatar`)
+			if (DEBUG) console.log(`${TAG} hooked HeaderAvatar`)
 		} catch (error) {
-			console.error(`${TAG} failed to hook HeaderAvatar:`, error)
+			reportError(`${TAG} failed to hook HeaderAvatar:`, error)
 		}
 	}
 
 	try {
-		unsubscribe = (revenge.discord.utils.modules.finders as any).getModuleWithImportedPath(PATH, apply)
+		unsubscribe = (finders as any).getModuleWithImportedPath(PATH, apply)
 	} catch (error) {
-		console.error(`${TAG} HeaderAvatar lookup failed:`, error)
+		reportError(`${TAG} HeaderAvatar lookup failed:`, error)
 	}
 
 	return () => {

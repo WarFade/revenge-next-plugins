@@ -41,6 +41,7 @@ import { nudgeStores } from "./nudge"
 import { rerenderViaFlux } from "./rerender"
 import { isEnabled, redactOptions } from "./state"
 import { cancelScheduledRefresh, notifyPresentationRefresh } from "./refreshSignal"
+import { reportError } from "../../../../shared/report"
 
 interface TagState {
 	/** `undefined` mirrors native's `rows == null`, i.e. "the next batch is a full sync". */
@@ -264,7 +265,7 @@ export function refreshChat(): string | undefined {
 			state.rows = mirror
 			repainted++
 		} catch (error) {
-			console.error("[ScreenshotRedactor] repaint failed for tag", tag, error)
+			reportError(["[ScreenshotRedactor] repaint failed for tag", tag].join(' '), error)
 			noteRefreshOutcome(`failed: ${String(error)}`)
 			return undefined
 		}

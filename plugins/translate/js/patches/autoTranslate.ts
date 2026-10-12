@@ -31,6 +31,9 @@ import { repaintMessage } from '../lib/repaint'
 import { debug, settings } from '../lib/state'
 import { fetchTranslation } from '../lib/translate'
 import { setShowing, translationFor } from '../lib/translations'
+import * as flux from '@revenge-mod/discord/flux'
+import { Stores } from '@revenge-mod/discord/flux'
+import { reportError } from '../../../../shared/report'
 
 /** Messages per sweep. Arriving in a busy channel should not be a hundred requests. */
 const MAX_PER_SWEEP = 12
@@ -54,7 +57,7 @@ export function autoStatus(): {
 function currentChannelId(): string | undefined {
 	try {
 		const id = (
-			revenge.discord.flux.Stores as any
+			Stores as any
 		)?.SelectedChannelStore?.getChannelId?.()
 		return typeof id === 'string' && id ? id : undefined
 	} catch {
@@ -65,7 +68,7 @@ function currentChannelId(): string | undefined {
 function loadedMessages(channelId: string): any[] {
 	try {
 		const result = (
-			revenge.discord.flux.Stores as any
+			Stores as any
 		)?.MessageStore?.getMessages?.(channelId)
 		return (
 			result?._array ??
@@ -134,7 +137,7 @@ async function sweep() {
 		)
 		await Promise.all(workers)
 	} catch (error) {
-		console.error('[Translate] auto sweep failed:', error)
+		reportError('[Translate] auto sweep failed:', error)
 	} finally {
 		sweeping = false
 	}
@@ -145,13 +148,13 @@ function scheduleSweep() {
 	sweepTimer = setTimeout(() => {
 		sweepTimer = undefined
 		sweep().catch(error =>
-			console.error('[Translate] auto sweep threw:', error),
+			reportError('[Translate] auto sweep threw:', error),
 		)
 	}, SWEEP_DELAY_MS)
 }
 
 export default function patchAutoTranslate(): () => void {
-	const { onFluxEventDispatched } = revenge.discord.flux
+	const { onFluxEventDispatched } = flux
 	const unsubscribes: Array<() => void> = []
 
 	// `onFluxEventDispatched` is a transformer, not a listener: whatever the handler returns
@@ -163,7 +166,7 @@ export default function patchAutoTranslate(): () => void {
 				try {
 					if (settings().autoTranslate) scheduleSweep()
 				} catch (error) {
-					console.error(`[Translate] ${event} handler failed:`, error)
+					reportError(`[Translate] ${event} handler failed:`, error)
 				}
 				return payload
 			}),

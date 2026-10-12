@@ -4,11 +4,18 @@ import { useBottomPadding } from "../safeArea"
 import { DEBUG_ROUTE, SERVERS_ROUTE } from "../routes"
 import type { HideServersDrawerStorage } from "../../index"
 import { useChangelog } from "../../../../../shared/changelog"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import { ReactNavigationNative } from "@revenge-mod/externals/react-navigation"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
+import { reportError } from "../../../../../shared/report"
 
-// Same ToastActionCreators pattern as GuildRow/FolderRow -- revenge.utils.toast.show
-// doesn't exist.
+const DEBUG: boolean = false
+
+// Same shared/toast.ts helper as GuildRow/FolderRow -- revenge.utils.toast.show doesn't exist.
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "HideServersDrawerToast", content })
+	sharedToast(content, "HideServersDrawerToast")
 }
 
 /**
@@ -30,10 +37,10 @@ export default function Settings({
 	// The changelog icon at the top right, and "What's new" once after an update.
 	useChangelog()
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, View } = revenge.react.ReactNative
-	const { Stack, Text, Card, TableRowGroup, TableRow } = revenge.discord.design.Design
-	const { useNavigation } = revenge.externals.ReactNavigation.ReactNavigationNative
+	const { Page } = components
+	const { ScrollView, View } = ReactNative
+	const { Stack, Text, Card, TableRowGroup, TableRow } = Design
+	const { useNavigation } = ReactNavigationNative
 
 	const navigation = useNavigation() as { navigate: (route: string) => void }
 
@@ -77,13 +84,13 @@ export default function Settings({
 					</TableRowGroup>
 
 					<TableRowGroup title="Developer" hasIcons>
-						<TableRow
+						{DEBUG && (<TableRow
 							label="Debug"
 							subLabel="Legacy custom bar, stock-bar probes and module dumps"
 							icon={rowIcon("BugIcon")}
 							arrow
 							onPress={() => navigation.navigate(DEBUG_ROUTE)}
-						/>
+						/>)}
 						<TableRow
 							label="Reload Discord"
 							subLabel="Opens Revenge's Reload Required prompt."
@@ -92,7 +99,7 @@ export default function Settings({
 								try {
 									api.plugin.requireReload()
 								} catch (error) {
-									console.error("[HideServersDrawer] requireReload failed:", error)
+									reportError("[HideServersDrawer] requireReload failed:", error)
 									showToast("Couldn't mark for reload — see the log.")
 								}
 							}}

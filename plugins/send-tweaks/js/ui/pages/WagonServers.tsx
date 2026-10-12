@@ -19,6 +19,11 @@ import { FieldRow } from '../fieldGroup'
 import { dangerIcon, rowIcon } from '../icon'
 import { WAGON_ADD_SERVER_ROUTE, WAGON_PLACEHOLDER_ROUTE, WAGON_SERVER_ROUTE } from '../routes'
 import { useBottomPadding } from '../safeArea'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as react from '@revenge-mod/react'
+import * as ReactNative from 'react-native'
 
 /** Which server / placeholder the sub-page opened for. Set just before navigating. */
 let selectedGuildId: string | undefined
@@ -39,9 +44,9 @@ export function openServerPicker(navigation: any, request: PickRequest) {
 }
 
 function WagonPage({ children }: { children?: ReactNode }) {
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack } = Design
 	const paddingBottom = useBottomPadding()
 	return (
 		<Page>
@@ -55,7 +60,7 @@ function WagonPage({ children }: { children?: ReactNode }) {
 }
 
 function nav(): any {
-	return revenge.externals.ReactNavigation.ReactNavigationNative.useNavigation()
+	return ReactNavigationNative.useNavigation()
 }
 
 function serverLine(server: WagonServer, placeholders: number): string {
@@ -66,7 +71,7 @@ function serverLine(server: WagonServer, placeholders: number): string {
 
 /** The Servers page: your placeholders, then the servers you've set up. */
 export default function WagonServers() {
-	const { TableRowGroup, TableRow, Text } = revenge.discord.design.Design
+	const { TableRowGroup, TableRow, Text } = Design
 	const navigation = nav()
 	const s = useSettings()
 	const placeholders = s.wagonPlaceholders ?? []
@@ -133,7 +138,7 @@ export default function WagonServers() {
 
 /** One server: on/off and its own placeholder values. */
 export function WagonServerPage() {
-	const { TableRowGroup, TableRow, TableSwitchRow, Text, TextInput } = revenge.discord.design.Design
+	const { TableRowGroup, TableRow, TableSwitchRow, Text, TextInput } = Design
 	const navigation = nav()
 	const s = useSettings()
 	const server = (s.wagonServers ?? []).find(item => item.guildId === selectedGuildId)
@@ -213,8 +218,8 @@ export function WagonServerPage() {
 
 /** Pick a server you're in. The one open right now comes first. */
 export function WagonAddServer() {
-	const { React } = revenge.react
-	const { TableRowGroup, TableRow, Text, TextInput } = revenge.discord.design.Design
+	const { React } = react
+	const { TableRowGroup, TableRow, Text, TextInput } = Design
 	const navigation = nav()
 	const s = useSettings()
 	const [query, setQuery] = React.useState('')
@@ -272,8 +277,8 @@ export function WagonAddServer() {
 
 /** Add or edit one of your placeholders. */
 export function WagonPlaceholderPage() {
-	const { React } = revenge.react
-	const { TableRowGroup, TableRow, Text, TextInput } = revenge.discord.design.Design
+	const { React } = react
+	const { TableRowGroup, TableRow, Text, TextInput } = Design
 	const navigation = nav()
 	const s = useSettings()
 	const [editing] = React.useState(selectedKey)

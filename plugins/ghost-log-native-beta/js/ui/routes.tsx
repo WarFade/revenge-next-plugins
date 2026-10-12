@@ -6,6 +6,9 @@ import Visuals from './pages/Visuals'
 import Backup from './pages/Backup'
 import License from './pages/License'
 import Debug from './pages/Debug'
+import * as modulesSettings from '@revenge-mod/discord/modules/settings'
+
+const DEBUG: boolean = false
 
 const PREFIX = 'bleelblep.ghost-log-native-beta'
 
@@ -19,7 +22,7 @@ export const LICENSE_ROUTE = `${PREFIX}.license`
 export const DEBUG_ROUTE = `${PREFIX}.debug`
 
 function refreshSettingsUI() {
-	const settings = revenge.discord.modules.settings as any
+	const settings = modulesSettings as any
 	if (typeof settings.refreshSettings === 'function') {
 		settings.refreshSettings()
 		return
@@ -29,8 +32,7 @@ function refreshSettingsUI() {
 }
 
 export function registerPages(): () => void {
-	const { registerSettingsItem, onSettingsModulesLoaded } =
-		revenge.discord.modules.settings
+	const { registerSettingsItem, onSettingsModulesLoaded } = modulesSettings
 
 	// Registered inside `onSettingsModulesLoaded`: it fires immediately when Discord's
 	// settings modules are already loaded, and waits when they are not. Registering
@@ -80,12 +82,12 @@ export function registerPages(): () => void {
 				useTitle: () => 'Licence',
 				screen: { route: LICENSE_ROUTE, getComponent: () => License },
 			}),
-			registerSettingsItem(DEBUG_ROUTE, {
+			...(DEBUG ? [registerSettingsItem(DEBUG_ROUTE, {
 				parent: null,
 				type: 'route',
 				useTitle: () => 'Debug',
 				screen: { route: DEBUG_ROUTE, getComponent: () => Debug },
-			}),
+			})] : []),
 		]
 
 		refreshSettingsUI()

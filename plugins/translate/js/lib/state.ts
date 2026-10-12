@@ -1,5 +1,8 @@
 import { DEFAULTS } from '../defaults'
 import type { TranslateStorage } from '../types'
+import { showToast } from '../../../../shared/toast'
+
+const DEBUG: boolean = false
 
 export const TAG = '[Translate]'
 
@@ -22,15 +25,12 @@ export function settings(): TranslateStorage {
 }
 
 export function debug(...args: unknown[]) {
-	if (settings().debugLogging) console.log(TAG, ...args)
+	if (settings().debugLogging) { if (DEBUG) console.log(TAG, ...args) }
 }
 
 export function toast(content: string) {
 	try {
-		revenge.discord.actions.ToastActionCreators.open({
-			key: 'TranslateToast',
-			content,
-		})
+		showToast(content, 'TranslateToast')
 	} catch {
 		/* a missing toast must never turn a translation into a crash */
 	}

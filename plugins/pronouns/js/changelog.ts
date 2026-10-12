@@ -3,6 +3,24 @@ import type { ChangelogEntry } from '../../../shared/changelog'
 /** Newest first. Every version users got gets an entry; see shared/changelog.tsx. */
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '0.2.4',
+		date: '2026-10-13',
+		title: 'False error',
+		changes: ['No more "profile store found but unusable" error in the Revenge plugin list. Nothing was actually wrong.'],
+	},
+	{
+		version: '0.2.3',
+		date: '2026-10-13',
+		title: 'Tidy-up',
+		changes: ['Errors now show in the Revenge plugin list instead of only the log, and the developer Debug page is gone from normal builds.'],
+	},
+	{
+		version: '0.2.2',
+		date: '2026-10-13',
+		title: 'Discord 350.4',
+		changes: ['Pop-up messages work on Discord 350.4. Before, showing one could crash Discord.'],
+	},
+	{
 		version: '0.2.1',
 		date: '2026-10-11',
 		title: 'Pronouns load on their own',

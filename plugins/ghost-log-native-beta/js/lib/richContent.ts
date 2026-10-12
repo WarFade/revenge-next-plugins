@@ -1,5 +1,6 @@
 import type { GhostLogSettings } from '../types'
 import { callNativeMethod } from './native'
+import { reportError } from '../../../../shared/report'
 
 const PLUGIN_ID = 'bleelblep.ghost-log-native-beta'
 
@@ -70,7 +71,7 @@ export async function resolveMediaUri(localFile: string): Promise<string | undef
 			return uri
 		}
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] Failed to decrypt saved media:', error)
+		reportError('[GhostLogNativeBeta] Failed to decrypt saved media:', error)
 	}
 	return undefined
 }
@@ -89,7 +90,7 @@ async function repairMediaUri(localFile: string, remoteUrl: unknown): Promise<st
 		const ok = await callNativeMethod(`${PLUGIN_ID}.repairMedia`, [localFile, remoteUrl])
 		if (ok === true) return await resolveMediaUri(localFile)
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] media repair failed:', error)
+		reportError('[GhostLogNativeBeta] media repair failed:', error)
 	}
 	return undefined
 }
@@ -156,7 +157,7 @@ export async function loadRichContent(ids: string[]) {
 			if (rich && typeof rich === 'object') out.set(id, rich as RichContent)
 		}
 	} catch (error) {
-		console.error('[GhostLogNativeBeta] Failed to load deleted embeds:', error)
+		reportError('[GhostLogNativeBeta] Failed to load deleted embeds:', error)
 	}
 	return out
 }

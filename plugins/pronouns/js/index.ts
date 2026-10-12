@@ -7,6 +7,7 @@ import { DEFAULTS, setStorage, type PronounsStorage } from './lib/state'
 import patchChat from './patches/chat'
 import patchMessageSheet from './patches/messageSheet'
 import Settings from './ui/Settings'
+import { reportError, setReporter } from '../../../shared/report'
 
 const TAG = '[Pronouns]'
 
@@ -14,7 +15,7 @@ function attempt(cleanup: (fn: () => void) => void, what: string, install: () =>
 	try {
 		cleanup(install())
 	} catch (error) {
-		console.error(`${TAG} ${what} failed:`, error)
+		reportError(`${TAG} ${what} failed:`, error)
 	}
 }
 
@@ -25,6 +26,10 @@ export default plugin<{ jsonStorage: PronounsStorage }>({
 	},
 
 	start(api) {
+		// Errors go to Revenge's plugin error list (shared/report.ts), not the log.
+		setReporter(api.plugin)
+		api.cleanup(() => setReporter(undefined))
+
 		// Enabling a plugin mid-session leaves its hooks half-applied (see ghost-log-native-beta).
 		if (api.plugin.startedLate) {
 			api.plugin.requireReload()

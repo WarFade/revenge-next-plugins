@@ -5,10 +5,14 @@ import { getStorage } from "../../lib/state"
 import { rowIcon } from "../icon"
 import { useBottomPadding } from "../safeArea"
 import type { RedactionStyle, ScreenshotRedactorStorage } from "../../types"
+import { showToast as sharedToast } from "../../../../../shared/toast"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import * as ReactNative from "react-native"
 
 // Read inside the component, never at module scope -- see docs/porting-rules.md rule 1.
 function showToast(content: string) {
-	revenge.discord.actions.ToastActionCreators.open({ key: "ScreenshotRedactorToast", content })
+	sharedToast(content, "ScreenshotRedactorToast")
 }
 
 const STYLE_OPTIONS: Array<{
@@ -44,10 +48,9 @@ const STYLE_OPTIONS: Array<{
  */
 export default function Visuals() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView, Alert } = revenge.react.ReactNative
-	const { Stack, TableRowGroup, TableSwitchRow, TableRow, TableRadioGroup, TableRadioRow } =
-		revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView, Alert } = ReactNative
+	const { Stack, TableRowGroup, TableSwitchRow, TableRow, TableRadioGroup, TableRadioRow } = Design
 
 	const storage = getStorage()
 	const s = { ...DEFAULTS, ...(storage?.use() ?? {}) }

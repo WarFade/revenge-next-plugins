@@ -9,6 +9,10 @@ import { FieldRow } from '../fieldGroup'
 import { rowIcon } from '../icon'
 import { useBottomPadding } from '../safeArea'
 import type { SendTweaksStorage } from '../../types'
+import * as components from '@revenge-mod/components'
+import { Design } from '@revenge-mod/discord/design'
+import * as React from 'react'
+import * as ReactNative from 'react-native'
 
 /**
  * Every switch, grouped by what it changes -- Ghost Log Native Beta's `Options.tsx` layout. The rule
@@ -16,10 +20,9 @@ import type { SendTweaksStorage } from '../../types'
  */
 export default function Options() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { ScrollView } = revenge.react.ReactNative
-	const React = revenge.react.React
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow, TextInput } = revenge.discord.design.Design
+	const { Page } = components
+	const { ScrollView } = ReactNative
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow, TextInput } = Design
 
 	const storage = getStorage()
 	const s = useSettings()
@@ -147,6 +150,14 @@ export default function Options() {
 							icon={rowIcon('TextIcon', 'ic_edit_24px')}
 							value={!!s.textReplace}
 							onValueChange={value => set({ textReplace: value })}
+						/>
+						<TableSwitchRow
+							label="Replace as you type"
+							subLabel="Your text and link rules run as you finish each word, so you see the result in the message box. Rules with placeholders still wait for send."
+							icon={rowIcon('KeyboardIcon', 'TextIcon', 'ic_edit_24px')}
+							disabled={!s.textReplace && !s.linkRewrite}
+							value={!!s.liveReplace}
+							onValueChange={value => set({ liveReplace: value })}
 						/>
 					</TableRowGroup>
 

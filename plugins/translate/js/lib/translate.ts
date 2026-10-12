@@ -26,6 +26,7 @@ import {
 	translationFor,
 } from './translations'
 import type { Provider } from './providers'
+import { Stores } from '@revenge-mod/discord/flux'
 
 /** Records the last outcome for the Debug page. Porting rule 3: report outcomes, not attempts. */
 let lastOutcome = 'Nothing translated yet'
@@ -194,7 +195,7 @@ export function repaintShowing(ids: string[] = showingIds()): number {
 	let channelId: string | undefined
 	try {
 		const id = (
-			revenge.discord.flux.Stores as any
+			Stores as any
 		)?.SelectedChannelStore?.getChannelId?.()
 		channelId = typeof id === 'string' && id ? id : undefined
 	} catch {

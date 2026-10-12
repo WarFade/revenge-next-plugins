@@ -1,4 +1,5 @@
 import { DEFAULTS, type LiveMarkdownStorage, callNative } from '../native'
+import { reportError } from '../../../../shared/report'
 
 /** Set once in start(); the settings page reads it from here. */
 let storage: RevengeJsonStorageApi<LiveMarkdownStorage> | undefined
@@ -15,5 +16,5 @@ export function useSettings(): LiveMarkdownStorage {
 /** Saves a change and hands it to native, which restyles open message boxes straight away. */
 export function update(patch: Partial<LiveMarkdownStorage>) {
 	storage?.set(patch)
-	callNative('setSettings', [patch]).catch(error => console.error('[LiveMarkdown] setSettings failed:', error))
+	callNative('setSettings', [patch]).catch(error => reportError('[LiveMarkdown] setSettings failed:', error))
 }

@@ -23,6 +23,7 @@ import { isReachingOut, scoreDraft } from './gate'
 import { scanPatterns } from './secrets'
 import { aiReady, debug, getAi, isSnoozed, settings } from './state'
 import type { Verdict } from '../types'
+import { Stores } from '@revenge-mod/discord/flux'
 
 export type LocalOutcome =
 	| { kind: 'pass'; why: string }
@@ -33,7 +34,7 @@ export type LocalOutcome =
 function isPrivateChannel(channelId: string): boolean {
 	try {
 		const type = (
-			revenge.discord.flux.Stores as any
+			Stores as any
 		)?.ChannelStore?.getChannel?.(channelId)?.type
 		return type === 1 || type === 3
 	} catch {

@@ -12,6 +12,7 @@
  */
 
 import { getStorage, settings } from './state'
+import { Stores } from '@revenge-mod/discord/flux'
 
 export interface WagonPlaceholder {
 	/** Lowercase, used as `{key}`. */
@@ -131,7 +132,7 @@ export function removeServer(guildId: string) {
 // --- Discord ------------------------------------------------------------------------------------
 
 function stores(): any {
-	return revenge.discord.flux.Stores as any
+	return Stores as any
 }
 
 /** Every server you're in, by name. */

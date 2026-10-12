@@ -3,11 +3,16 @@ import { refresh, store, unfiltered } from "../../patches/sortedGuilds"
 import GuildIcon from "../components/GuildIcon"
 import { rowIcon } from "../icon"
 import { useBottomPadding } from "../safeArea"
+import * as components from "@revenge-mod/components"
+import { Design } from "@revenge-mod/discord/design"
+import { Stores } from "@revenge-mod/discord/flux"
+import * as react from "@revenge-mod/react"
+import * as ReactNative from "react-native"
 
 // Flux stores are looked up by name directly through the Stores proxy, not a module finder
 // filter -- there is no `withStoreName` under modules.finders.filters. Read per call, never at
 // module scope -- see docs/porting-rules.md rule 1.
-const guildStore = (): any => (revenge.discord.flux.Stores as any).GuildStore
+const guildStore = (): any => (Stores as any).GuildStore
 
 type Guild = { id: string; name: string; icon?: string }
 type Group = { title: string; guilds: Guild[]; folderId?: string | number }
@@ -92,10 +97,10 @@ function groups(): Group[] {
  */
 export default function Servers() {
 	// Read per-render, never at module scope -- see docs/porting-rules.md rule 1.
-	const { Page } = revenge.components
-	const { React } = revenge.react
-	const { ScrollView } = revenge.react.ReactNative
-	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = revenge.discord.design.Design
+	const { Page } = components
+	const { React } = react
+	const { ScrollView } = ReactNative
+	const { Stack, Text, TableRowGroup, TableRow, TableSwitchRow } = Design
 
 	// The switches are controlled by isHidden(), so the page has to re-render itself after a
 	// toggle or the switch springs straight back to its old position.
