@@ -37,20 +37,20 @@ interface PickRequest {
 
 let pickRequest: PickRequest | undefined
 
-/** Opens the server picker for someone else (a rule's per-server text) instead of the Servers page. */
+/** Opens the server picker for someone else (a rule's server list) instead of the Servers page. */
 export function openServerPicker(navigation: any, request: PickRequest) {
 	pickRequest = request
 	navigation.navigate(WAGON_ADD_SERVER_ROUTE)
 }
 
-function WagonPage({ children }: { children?: ReactNode }) {
+function WagonPage({ children, open }: { children?: ReactNode; open?: boolean }) {
 	const { Page } = components
 	const { ScrollView } = ReactNative
 	const { Stack } = Design
 	const paddingBottom = useBottomPadding()
 	return (
 		<Page>
-			{greetingsUnlocked() ? (
+			{open || greetingsUnlocked() ? (
 				<ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom }}>
 					<Stack spacing={24}>{children}</Stack>
 				</ScrollView>
@@ -249,7 +249,7 @@ export function WagonAddServer() {
 	}
 
 	return (
-		<WagonPage>
+		<WagonPage open={!!request}>
 			<TableRowGroup>
 				<FieldRow label="Search">
 					<TextInput value={query} placeholder="Server name" onChange={setQuery} />

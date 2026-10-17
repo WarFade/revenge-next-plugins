@@ -7,7 +7,7 @@ import {
 	readRules,
 	updateRule,
 } from '../../lib/ruleStore'
-import { compileRule, type Rule, type ServerReplacement } from '../../lib/textReplace'
+import { compileRule, type Rule } from '../../lib/textReplace'
 import { openServerPicker } from './WagonServers'
 import { FieldRow } from '../fieldGroup'
 import { dangerIcon, rowIcon } from '../icon'
@@ -199,20 +199,19 @@ export default function EditRule() {
 			flushSave()
 		}
 	}, [flushSave])
-	// Welcome Wagon: same Find, different Replace with per server.
-	const perServer = unlocked && !links
-	const serverTexts: ServerReplacement[] = rule.serverReplace ?? []
-	const guildName = (entry: ServerReplacement) =>
-		(Stores as any).GuildStore?.getGuild?.(entry.guildId)?.name ?? entry.name ?? entry.guildId
-	const setServerText = (guildId: string, replace: string) =>
-		set({ serverReplace: serverTexts.map(entry => (entry.guildId === guildId ? { ...entry, replace } : entry)) })
-	const removeServerText = (entry: ServerReplacement) => {
-		const key = 'SendTweaksRemoveServerText'
+	// Only in these servers: rule.scope { kind: 'servers' }. No servers = everywhere.
+	const serverIds = rule.scope?.kind === 'servers' ? (rule.scope.ids ?? []) : []
+	const otherScope = rule.scope && rule.scope.kind !== 'all' && rule.scope.kind !== 'servers' ? rule.scope.kind : undefined
+	const guildName = (id: string) => (Stores as any).GuildStore?.getGuild?.(id)?.name ?? id
+	const setServers = (ids: string[]) => set({ scope: ids.length ? { kind: 'servers', ids } : undefined })
+	const removeServer = (id: string) => {
+		const key = 'SendTweaksRemoveRuleServer'
+		const last = serverIds.length === 1
 		Alerts.openAlert(
 			key,
 			<AlertModal
-				title={`Remove ${guildName(entry)}?`}
-				content="This rule will send its normal Replace with text in that server again."
+				title={`Remove ${guildName(id)}?`}
+				content={last ? 'With no servers left, this rule works everywhere again.' : 'This rule will stop working in that server.'}
 				actions={
 					<>
 						<AlertActionButton
@@ -220,7 +219,7 @@ export default function EditRule() {
 							variant="destructive"
 							onPress={() => {
 								Alerts.dismissAlert(key)
-								set({ serverReplace: serverTexts.filter(item => item.guildId !== entry.guildId) })
+								setServers(serverIds.filter(item => item !== id))
 							}}
 						/>
 						<AlertActionButton text="Cancel" variant="secondary" onPress={() => Alerts.dismissAlert(key)} />
@@ -306,7 +305,7 @@ export default function EditRule() {
 							/>
 						</FieldRow>
 						<FieldRow
-							label={perServer && serverTexts.length ? 'Replace with (other servers and DMs)' : 'Replace with'}
+							label="Replace with"
 							description={
 								(rule.regex
 									? `Use $1, $2 … for captured groups, and \\n for a line break.${links ? '' : ' Find ^ or $ alone to add text to the start or end of every message.'}`
@@ -327,46 +326,34 @@ export default function EditRule() {
 						</FieldRow>
 					</TableRowGroup>
 
-					{perServer ? (
-						<>
-							<Text variant="text-sm/normal" color="text-muted">
-								Same Find, different text in particular servers. In a server listed here, its own text is sent
-								instead of Replace with; everywhere else, Replace with is used.
-							</Text>
-							{serverTexts.map(entry => (
-								<TableRowGroup key={entry.guildId} title={guildName(entry)} hasIcons>
-									<FieldRow label="Replace with in this server" description="Placeholders work here too. Empty deletes what was found.">
-										<LinesField
-											placeholder="Text to send in this server"
-											value={entry.replace}
-											onChange={(value: string) => setServerText(entry.guildId, value)}
-										/>
-									</FieldRow>
-									<TableRow
-										variant="danger"
-										label="Remove this server"
-										icon={dangerIcon('TrashIcon', 'ic_trash_24px')}
-										onPress={() => removeServerText(entry)}
-									/>
-								</TableRowGroup>
-							))}
-							<TableRowGroup hasIcons>
-								<TableRow
-									label="Add different text for a server"
-									subLabel={serverTexts.length ? undefined : 'Pick a server, then write what this rule sends there'}
-									icon={rowIcon('PlusSmallIcon', 'PlusMediumIcon')}
-									arrow
-									onPress={() =>
-										openServerPicker(navigation, {
-											exclude: serverTexts.map(entry => entry.guildId),
-											onPick: guild =>
-												set({ serverReplace: [...serverTexts, { guildId: guild.id, name: guild.name, replace: rule.replace }] }),
-										})
-									}
-								/>
-							</TableRowGroup>
-						</>
-					) : null}
+					<TableRowGroup title="Only in these servers" hasIcons>
+						{serverIds.map(id => (
+							<TableRow
+								key={id}
+								label={guildName(id)}
+								subLabel="Tap to remove"
+								onPress={() => removeServer(id)}
+							/>
+						))}
+						<TableRow
+							label="Add a server"
+							subLabel={
+								serverIds.length
+									? undefined
+									: otherScope
+										? `Imported to work only in ${otherScope === 'dms' ? 'DMs' : 'some channels'}. Adding a server replaces that.`
+										: 'Works everywhere now. Add servers to use it only there (not in DMs).'
+							}
+							icon={rowIcon('PlusSmallIcon', 'PlusMediumIcon')}
+							arrow
+							onPress={() =>
+								openServerPicker(navigation, {
+									exclude: serverIds,
+									onPick: guild => setServers([...serverIds, guild.id]),
+								})
+							}
+						/>
+					</TableRowGroup>
 
 					{unlocked ? validateTemplate(rule.replace, rule.replace, settings().snippets ?? []).map(warning => <Text key={warning} variant="text-sm/normal" color="text-feedback-warning">{warning}</Text>) : null}
 

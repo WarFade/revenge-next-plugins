@@ -71,7 +71,6 @@ function toRule(raw: any, label: string): Rule | string {
 		caseSensitive: !flags.includes('i'),
 		wholeWord: typeof raw.wholeWord === 'boolean' ? raw.wholeWord : false,
 		live: raw.live === true,
-		serverReplace: Array.isArray(raw.serverReplace) ? raw.serverReplace : undefined,
 		extraFlags: sanitizeFlags(flags) || undefined,
 	})
 	const compiled = compileRule(rule)
@@ -125,7 +124,6 @@ export function ruleToJson(rule: Rule): Record<string, unknown> {
 		...(rule.wholeWord !== undefined ? { wholeWord: rule.wholeWord } : {}),
 		...(rule.live ? { live: true } : {}),
 		...(rule.scope ? { scope: rule.scope } : {}),
-		...(rule.serverReplace?.length ? { serverReplace: rule.serverReplace } : {}),
 	}
 }
 

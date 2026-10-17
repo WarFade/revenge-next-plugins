@@ -35,14 +35,9 @@ export function isKnownPlaceholder(key: string): boolean {
 	return (PLACEHOLDERS as readonly string[]).includes(key) || isCustomPlaceholder(key)
 }
 
-/**
- * The rule's replacement for the server being sent in: its per-server text when it has one for this
- * server (and Welcome Wagon is unlocked), else its normal Replace with.
- */
-export function replacementFor(rule: { replace: string; serverReplace?: Array<{ guildId: string; replace: string }> }): string {
-	if (!rule.serverReplace?.length || !greetingsUnlocked() || context?.sample) return rule.replace
-	const guildId = channel()?.guild_id
-	return (guildId && rule.serverReplace.find(entry => entry.guildId === guildId)?.replace) ?? rule.replace
+/** The rule's replacement. Kept as one place to resolve it; per-server text was removed in 1.0.2. */
+export function replacementFor(rule: { replace: string }): string {
+	return rule.replace
 }
 
 /**

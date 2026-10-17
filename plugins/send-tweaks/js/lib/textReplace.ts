@@ -38,18 +38,6 @@ export interface Rule {
 	 * and `i` follows `caseSensitive`, so neither is stored here.
 	 */
 	extraFlags?: string
-	/**
-	 * Welcome Wagon: a different replacement in particular servers, same Find. Used only while
-	 * Welcome Wagon is unlocked; elsewhere `replace` is used. Stored with the rule (rules are written whole).
-	 */
-	serverReplace?: ServerReplacement[]
-}
-
-export interface ServerReplacement {
-	guildId: string
-	/** Name when it was added, for servers you have since left. */
-	name?: string
-	replace: string
 }
 
 export function newRule(overrides: Partial<Rule> = {}): Rule {
