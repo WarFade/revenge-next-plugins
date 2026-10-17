@@ -3,7 +3,7 @@
 	"id": "bleelblep.send-tweaks",
 	"name": "Send Tweaks",
 	"description": "Cleans links, polishes wording and applies your own find-and-replace rules.",
-	"author": "bleelblep, Rosie",
+	"author": "bleelblep, Rosie, WarFade",
 	"icon": "SendMessageIcon",
 	"version": "1.0.1",
 	"dependencies": {
